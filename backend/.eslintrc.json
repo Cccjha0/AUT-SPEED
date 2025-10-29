@@ -1,0 +1,27 @@
+{
+  "extends": ["../.eslintrc.json"],
+  "env": {
+    "node": true
+  },
+  "overrides": [
+    {
+      "files": [
+        "*.ts"
+      ],
+      "parserOptions": {
+        "project": [
+          "./tsconfig.json"
+        ],
+        "tsconfigRootDir": "."
+      },
+      "rules": {
+        "@typescript-eslint/no-unused-vars": [
+          "error",
+          {
+            "argsIgnorePattern": "^_"
+          }
+        ]
+      }
+    }
+  ]
+}

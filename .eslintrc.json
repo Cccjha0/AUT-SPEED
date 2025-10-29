@@ -1,0 +1,47 @@
+{
+  "root": true,
+  "ignorePatterns": [
+    "node_modules",
+    "dist",
+    "coverage",
+    ".next",
+    "out"
+  ],
+  "env": {
+    "es2022": true,
+    "node": true,
+    "browser": true
+  },
+  "overrides": [
+    {
+      "files": [
+        "*.ts",
+        "*.tsx"
+      ],
+      "parser": "@typescript-eslint/parser",
+      "parserOptions": {
+        "ecmaVersion": 2022,
+        "sourceType": "module"
+      },
+      "plugins": [
+        "@typescript-eslint"
+      ],
+      "extends": [
+        "eslint:recommended",
+        "plugin:@typescript-eslint/recommended",
+        "plugin:@typescript-eslint/stylistic",
+        "prettier"
+      ]
+    },
+    {
+      "files": [
+        "*.js",
+        "*.cjs",
+        "*.mjs"
+      ],
+      "extends": [
+        "eslint:recommended"
+      ]
+    }
+  ]
+}
