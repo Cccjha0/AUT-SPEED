@@ -1,10 +1,9 @@
+import 'dotenv/config';
 import { ValidationPipe } from '@nestjs/common';
-import { config as loadEnv } from 'dotenv';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  loadEnv();
   const app = await NestFactory.create(AppModule);
 
   app.setGlobalPrefix('api');

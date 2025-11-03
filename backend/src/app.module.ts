@@ -3,6 +3,11 @@ import { MongooseModule } from '@nestjs/mongoose';
 import type { Connection } from 'mongoose';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { ClaimsModule } from './claims/claims.module';
+import { EvidenceModule } from './evidence/evidence.module';
+import { PracticesModule } from './practices/practices.module';
+import { RatingsModule } from './ratings/ratings.module';
+import { SubmissionsModule } from './submissions/submissions.module';
 
 @Module({
   imports: [
@@ -17,7 +22,12 @@ import { AppService } from './app.service';
           return connection;
         }
       })
-    })
+    }),
+    PracticesModule,
+    ClaimsModule,
+    SubmissionsModule,
+    EvidenceModule,
+    RatingsModule
   ],
   controllers: [AppController],
   providers: [AppService]
