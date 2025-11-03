@@ -5,6 +5,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ClaimsModule } from './claims/claims.module';
 import { EvidenceModule } from './evidence/evidence.module';
+import { ModerationModule } from './moderation/moderation.module';
 import { PracticesModule } from './practices/practices.module';
 import { RatingsModule } from './ratings/ratings.module';
 import { SubmissionsModule } from './submissions/submissions.module';
@@ -27,7 +28,8 @@ import { SubmissionsModule } from './submissions/submissions.module';
     ClaimsModule,
     SubmissionsModule,
     EvidenceModule,
-    RatingsModule
+    RatingsModule,
+    ModerationModule
   ],
   controllers: [AppController],
   providers: [AppService]
