@@ -3,7 +3,7 @@ import {
   Injectable
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import type { FilterQuery, Model } from 'mongoose';
+import type { FilterQuery, Model, PipelineStage } from 'mongoose';
 import type { ArticleEvidenceDocument } from '../evidence/schemas/article-evidence.schema';
 import { ArticleEvidence, EvidenceResult } from '../evidence/schemas/article-evidence.schema';
 import type { PracticeDocument } from '../practices/schemas/practice.schema';
@@ -146,13 +146,49 @@ export class SearchService {
       filter.articleDoi = { $in: doiFilter };
     }
 
+    const pipeline: PipelineStage[] = [
+      { $match: filter },
+      { $sort: { createdAt: -1 } },
+      { $skip: safeSkip },
+      { $limit: safeLimit },
+      {
+        $lookup: {
+          from: this.submissionModel.collection.name,
+          localField: 'articleDoi',
+          foreignField: 'doi',
+          as: 'submission'
+        }
+      },
+      {
+        $addFields: {
+          submission: { $first: '$submission' }
+        }
+      },
+      {
+        $project: {
+          _id: 1,
+          articleDoi: 1,
+          practiceKey: 1,
+          claimKey: 1,
+          result: 1,
+          methodType: 1,
+          participantType: 1,
+          analyst: 1,
+          notes: 1,
+          createdAt: 1,
+          article: {
+            title: '$submission.title',
+            venue: '$submission.venue',
+            year: '$submission.year',
+            authors: '$submission.authors',
+            doi: '$articleDoi'
+          }
+        }
+      }
+    ];
+
     const [items, total, resultAggregation] = await Promise.all([
-      this.evidenceModel
-        .find(filter)
-        .sort({ createdAt: -1 })
-        .skip(safeSkip)
-        .limit(safeLimit)
-        .lean(),
+      this.evidenceModel.aggregate(pipeline).exec(),
       this.evidenceModel.countDocuments(filter),
       this.aggregateEvidenceByResult(filter)
     ]);
