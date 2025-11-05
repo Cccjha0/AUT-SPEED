@@ -28,3 +28,5 @@ export class UserRating {
 export const UserRatingSchema = SchemaFactory.createForClass(UserRating);
 
 UserRatingSchema.index({ articleDoi: 1 });
+UserRatingSchema.index({ articleDoi: 1, user: 1 }, { unique: true, sparse: true });
+

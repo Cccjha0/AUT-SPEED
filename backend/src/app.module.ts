@@ -8,6 +8,7 @@ import { EvidenceModule } from './evidence/evidence.module';
 import { ModerationModule } from './moderation/moderation.module';
 import { PracticesModule } from './practices/practices.module';
 import { RatingsModule } from './ratings/ratings.module';
+import { SearchModule } from './search/search.module';
 import { SubmissionsModule } from './submissions/submissions.module';
 
 @Module({
@@ -29,7 +30,8 @@ import { SubmissionsModule } from './submissions/submissions.module';
     SubmissionsModule,
     EvidenceModule,
     RatingsModule,
-    ModerationModule
+    ModerationModule,
+    SearchModule
   ],
   controllers: [AppController],
   providers: [AppService]
