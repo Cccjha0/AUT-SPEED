@@ -1,0 +1,157 @@
+import { fetchSearchData } from '../../../lib/api';
+import type { EvidenceItem } from '../../../lib/types';
+import { PaginationControls } from '../../../components/PaginationControls';
+import { RatingButton } from '../../../components/RatingButton';
+import { ErrorMessage } from '../../../components/ErrorMessage';
+
+interface EvidencePageProps {
+  searchParams?: Record<string, string | string[] | undefined>;
+}
+
+function parseNumber(value: string | string[] | undefined, fallback: number) {
+  if (!value) {
+    return fallback;
+  }
+  const parsed = Array.isArray(value) ? Number.parseInt(value[0], 10) : Number.parseInt(value, 10);
+  return Number.isNaN(parsed) ? fallback : parsed;
+}
+
+function parseString(value: string | string[] | undefined) {
+  if (!value) {
+    return undefined;
+  }
+  return Array.isArray(value) ? value[0] : value;
+}
+
+export default async function EvidencePage({ searchParams }: EvidencePageProps) {
+  const limit = parseNumber(searchParams?.limit, 10);
+  const skip = parseNumber(searchParams?.skip, 0);
+  const practiceKey = parseString(searchParams?.practiceKey);
+  const claimKey = parseString(searchParams?.claimKey);
+  const result = parseString(searchParams?.result);
+  const from = parseNumber(searchParams?.from, NaN);
+  const to = parseNumber(searchParams?.to, NaN);
+
+  const response = await fetchSearchData<EvidenceItem>('/search/evidence', {
+    limit,
+    skip,
+    practiceKey,
+    claimKey,
+    result,
+    from: Number.isNaN(from) ? undefined : from,
+    to: Number.isNaN(to) ? undefined : to
+  });
+
+  const items = response.data?.items ?? [];
+  const total = response.data?.total ?? 0;
+  const resultCounts = (response.data?.aggregations?.resultCounts ?? {}) as Record<string, number>;
+
+  return (
+    <div className="page">
+      <section className="card">
+        <h1>Evidence</h1>
+        <p className="text-muted">
+          Filter and review evidence records, rate articles, and inspect aggregated outcomes.
+        </p>
+        <form className="form-grid" method="get">
+          <label>
+            Practice Key
+            <input name="practiceKey" defaultValue={practiceKey ?? ''} />
+          </label>
+          <label>
+            Claim Key
+            <input name="claimKey" defaultValue={claimKey ?? ''} />
+          </label>
+          <label>
+            Result
+            <select name="result" defaultValue={result ?? ''}>
+              <option value="">All</option>
+              <option value="agree">Agree</option>
+              <option value="disagree">Disagree</option>
+              <option value="mixed">Mixed</option>
+            </select>
+          </label>
+          <label>
+            Year From
+            <input type="number" name="from" defaultValue={!Number.isNaN(from) ? from : ''} />
+          </label>
+          <label>
+            Year To
+            <input type="number" name="to" defaultValue={!Number.isNaN(to) ? to : ''} />
+          </label>
+          <input type="hidden" name="limit" value={limit} />
+          <button type="submit">Apply Filters</button>
+        </form>
+        <div className="inline-buttons">
+          <a className="button-secondary" href="/search/evidence?limit=10&skip=0">
+            Reset Filters
+          </a>
+        </div>
+      </section>
+
+      {resultCounts ? (
+        <section className="card">
+          <h2>Result Summary</h2>
+          <p className="text-muted">
+            Agree: {resultCounts.agree ?? 0} | Disagree: {resultCounts.disagree ?? 0} | Mixed:{' '}
+            {resultCounts.mixed ?? 0}
+          </p>
+        </section>
+      ) : null}
+
+      {response.error ? (
+        <section className="card">
+          <ErrorMessage message={response.error.message ?? 'Unable to load evidence'} />
+        </section>
+      ) : null}
+
+      {!response.error && items.length === 0 ? (
+        <section className="card">
+          <p className="text-muted">No evidence found. Adjust your filters or try a different claim.</p>
+        </section>
+      ) : null}
+
+      {items.length ? (
+        <section className="card" style={{ overflowX: 'auto' }}>
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th align="left">Title</th>
+                <th align="left">DOI</th>
+                <th align="left">Result</th>
+                <th align="left">Method</th>
+                <th align="left">Participants</th>
+                <th align="left">Year</th>
+                <th align="left">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map(item => {
+                const article = item.article ?? {
+                  title: undefined,
+                  year: undefined,
+                  doi: item.articleDoi
+                };
+                return (
+                  <tr key={item._id}>
+                    <td>{article.title ?? 'Untitled'}</td>
+                    <td>{article.doi}</td>
+                    <td>{item.result}</td>
+                    <td>{item.methodType}</td>
+                    <td>{item.participantType ?? 'unknown'}</td>
+                    <td>{article.year ?? 'N/A'}</td>
+                    <td>
+                      <RatingButton doi={article.doi} />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </section>
+      ) : null}
+
+      {total > 0 ? <PaginationControls limit={limit} skip={skip} total={total} /> : null}
+    </div>
+  );
+}

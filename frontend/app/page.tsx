@@ -1,13 +1,17 @@
-export default function Page() {
+import HealthStatus from '../components/HealthStatus';
+
+export default function HomePage() {
   return (
-    <main className="page">
-      <section>
-        <h1>Next.js Frontend</h1>
+    <div className="page">
+      <section className="card">
+        <h1>Welcome to SPEED</h1>
         <p>
-          This frontend is part of the Speed Monorepo Starter. Update this page to begin building
-          your application.
+          Collaborate on submissions, moderation, and evidence-backed practices from a unified
+          monorepo starter.
         </p>
       </section>
-    </main>
+      <HealthStatus />
+    </div>
   );
 }
+
