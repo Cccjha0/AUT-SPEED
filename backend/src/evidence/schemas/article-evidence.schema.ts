@@ -43,7 +43,7 @@ export class ArticleEvidence {
   @Prop({ required: true, enum: EvidenceResult })
   result!: EvidenceResult;
 
-  @Prop({ required: true, enum: EvidenceMethodType })
+  @Prop({ required: true, enum: EvidenceMethodType, default: EvidenceMethodType.Other })
   methodType!: EvidenceMethodType;
 
   @Prop({ enum: EvidenceParticipantType })
