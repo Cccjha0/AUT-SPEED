@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -6,11 +7,8 @@ import {
   HttpStatus,
   Param,
   Post,
-  Query,
-  UsePipes,
-  ValidationPipe
+  Query
 } from '@nestjs/common';
-import type { ListSubmissionsQueryDto } from '../submissions/dto/list-submissions.dto';
 import type { RejectSubmissionDto } from '../submissions/dto/reject-submission.dto';
 import { ModerationService } from './moderation.service';
 
@@ -19,15 +17,15 @@ export class ModerationController {
   constructor(private readonly moderationService: ModerationService) {}
 
   @Get('queue')
-  @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
-  async queue(@Query() query: Omit<ListSubmissionsQueryDto, 'status'>) {
+  async queue(@Query() query: Record<string, string | string[] | undefined>) {
     try {
-      const safeQuery = {
-        limit: query.limit ?? 10,
-        skip: query.skip ?? 0
-      };
+      const limit = this.parsePositiveInt(query.limit, 10);
+      const skip = this.parsePositiveInt(query.skip, 0);
+      if (limit === 0) {
+        throw new BadRequestException('limit must be greater than 0');
+      }
 
-      const data = await this.moderationService.listQueued(safeQuery);
+      const data = await this.moderationService.listQueued({ limit, skip });
       return this.wrapSuccess(data);
     } catch (error) {
       this.wrapAndThrowError(error);
@@ -45,7 +43,6 @@ export class ModerationController {
   }
 
   @Post(':id/reject')
-  @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
   async reject(@Param('id') id: string, @Body() payload: RejectSubmissionDto) {
     try {
       const data = await this.moderationService.reject(id, payload);
@@ -75,4 +72,19 @@ export class ModerationController {
       HttpStatus.INTERNAL_SERVER_ERROR
     );
   }
+
+  private parsePositiveInt(
+    raw: string | string[] | undefined,
+    fallback: number
+  ) {
+    if (Array.isArray(raw) || raw === undefined) {
+      return fallback;
+    }
+    const value = Number(raw);
+    if (!Number.isFinite(value) || value < 0) {
+      return fallback;
+    }
+    return Math.floor(value);
+  }
 }
+

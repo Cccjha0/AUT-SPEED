@@ -4,6 +4,7 @@ import {
   NotFoundException
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
+import { instanceToPlain } from 'class-transformer';
 import type { FilterQuery, Model } from 'mongoose';
 import { Types } from 'mongoose';
 import type { CreateSubmissionDto } from './dto/create-submission.dto';
@@ -23,8 +24,15 @@ export class SubmissionsService {
   ) {}
 
   async create(dto: CreateSubmissionDto) {
+    if (!dto?.title || !dto?.authors?.length || !dto?.venue || typeof dto.year !== 'number') {
+      throw new BadRequestException('Submission must include title, authors, venue, and year');
+    }
+    const currentYear = new Date().getFullYear() + 1;
+    if (dto.year < 1900 || dto.year > currentYear) {
+      throw new BadRequestException('Submission year out of range');
+    }
     try {
-      const created = new this.submissionModel(dto);
+      const created = new this.submissionModel(instanceToPlain(dto));
       const saved = await created.save();
       return saved.toObject();
     } catch (error) {

@@ -3,6 +3,7 @@
 import { useCallback, useState } from 'react';
 import { API_BASE } from '../lib/config';
 import type { RatingsAverageResponse } from '../lib/types';
+import { fetchRealtimeJson } from '../lib/api/search';
 import { LoadingIndicator } from './LoadingIndicator';
 import { ErrorMessage } from './ErrorMessage';
 
@@ -16,6 +17,7 @@ export function RatingButton({ doi }: RatingButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasFetched, setHasFetched] = useState(false);
+  const [isOptimistic, setIsOptimistic] = useState(false);
 
   const tooltip = average === null ? 'No ratings yet' : `${average.toFixed(2)} stars (${count ?? 0})`;
 
@@ -23,14 +25,10 @@ export function RatingButton({ doi }: RatingButtonProps) {
     try {
       setIsLoading(true);
       setError(null);
-      const response = await fetch(
-        `${API_BASE}/ratings/avg?doi=${encodeURIComponent(doi)}`,
-        { cache: 'no-store' }
-      );
-      const payload = (await response.json().catch(() => ({}))) as {
+      const { response, payload } = await fetchRealtimeJson<{
         data?: RatingsAverageResponse;
         error?: { message?: string } | null;
-      };
+      }>('/ratings/avg', { doi });
 
       if (!response.ok) {
         setError(payload?.error?.message ?? 'Unable to load rating');
@@ -39,6 +37,7 @@ export function RatingButton({ doi }: RatingButtonProps) {
 
       setAverage(payload.data?.average ?? null);
       setCount(payload.data?.count ?? 0);
+      setIsOptimistic(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to load rating');
     } finally {
@@ -59,9 +58,25 @@ export function RatingButton({ doi }: RatingButtonProps) {
 
     const user = window.prompt('Enter your name (optional)') ?? undefined;
 
+    const previousState = {
+      average,
+      count
+    };
+
     try {
       setIsLoading(true);
       setError(null);
+
+      const currentCount = previousState.count ?? 0;
+      const nextCount = currentCount + 1;
+      const nextAverage =
+        previousState.average === null
+          ? stars
+          : ((previousState.average ?? 0) * currentCount + stars) / nextCount;
+
+      setAverage(nextAverage);
+      setCount(nextCount);
+      setIsOptimistic(true);
 
       const response = await fetch(`${API_BASE}/ratings`, {
         method: 'POST',
@@ -75,6 +90,9 @@ export function RatingButton({ doi }: RatingButtonProps) {
 
       if (!response.ok) {
         const message = payload?.error?.message ?? 'Unable to submit rating';
+        setAverage(previousState.average ?? null);
+        setCount(previousState.count ?? null);
+        setIsOptimistic(false);
         setError(Array.isArray(message) ? message.join(', ') : message);
         return;
       }
@@ -82,6 +100,9 @@ export function RatingButton({ doi }: RatingButtonProps) {
       window.alert('Thanks for your rating!');
       await fetchAverage();
     } catch (err) {
+      setIsOptimistic(false);
+      setAverage(previousState.average ?? null);
+      setCount(previousState.count ?? null);
       setError(err instanceof Error ? err.message : 'Unable to submit rating');
     } finally {
       setIsLoading(false);
@@ -107,6 +128,11 @@ export function RatingButton({ doi }: RatingButtonProps) {
       >
         Rate
       </button>
+      {isOptimistic && !isLoading && !error ? (
+        <span className="text-muted" role="status" aria-live="polite">
+          {average !== null ? `${average.toFixed(2)} stars pending…` : null}
+        </span>
+      ) : null}
       {isLoading ? <LoadingIndicator label="" /> : null}
       {error ? <ErrorMessage message={error} /> : null}
     </div>

@@ -4,6 +4,7 @@ import {
   NotFoundException
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
+import { instanceToPlain } from 'class-transformer';
 import type { FilterQuery, Model } from 'mongoose';
 import type { CreateClaimDto } from './dto/create-claim.dto';
 import type { ListClaimsQueryDto } from './dto/list-claims.dto';
@@ -63,8 +64,11 @@ export class ClaimsService {
   }
 
   async create(dto: CreateClaimDto) {
+    if (!dto?.key || !dto?.practiceKey || !dto?.text) {
+      throw new BadRequestException('Claim key, practiceKey, and text are required');
+    }
     await this.ensurePracticeExists(dto.practiceKey);
-    const claim = new this.claimModel(dto);
+    const claim = new this.claimModel(instanceToPlain(dto));
 
     try {
       const saved = await claim.save();

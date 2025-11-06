@@ -1,8 +1,9 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
-import { fetchSearchData } from '../../../lib/api';
+import { fetchSearchList } from '../../../lib/api/search';
 import type { ClaimSummary } from '../../../lib/types';
 import { PaginationControls } from '../../../components/PaginationControls';
+import { fromPageSize } from '../../../lib/url';
 
 export const metadata: Metadata = {
   title: 'Claims | SPEED Search'
@@ -12,12 +13,12 @@ interface ClaimsPageProps {
   searchParams?: Record<string, string | string[] | undefined>;
 }
 
-function parseNumber(value: string | string[] | undefined, fallback: number) {
+function parseNumber(value: string | string[] | undefined) {
   if (!value) {
-    return fallback;
+    return undefined;
   }
   const parsed = Array.isArray(value) ? Number.parseInt(value[0], 10) : Number.parseInt(value, 10);
-  return Number.isNaN(parsed) ? fallback : parsed;
+  return Number.isNaN(parsed) ? undefined : parsed;
 }
 
 function parseString(value: string | string[] | undefined) {
@@ -29,9 +30,13 @@ function parseString(value: string | string[] | undefined) {
 
 export default async function ClaimsPage({ searchParams }: ClaimsPageProps) {
   const practiceKey = parseString(searchParams?.practiceKey);
-  const limit = parseNumber(searchParams?.limit, 10);
-  const skip = parseNumber(searchParams?.skip, 0);
   const query = parseString(searchParams?.query);
+  const { page, size, limit, skip } = fromPageSize({
+    page: parseNumber(searchParams?.page),
+    size: parseNumber(searchParams?.size),
+    limit: parseNumber(searchParams?.limit),
+    skip: parseNumber(searchParams?.skip)
+  });
 
   if (!practiceKey) {
     return (
@@ -47,7 +52,7 @@ export default async function ClaimsPage({ searchParams }: ClaimsPageProps) {
     );
   }
 
-  const response = await fetchSearchData<ClaimSummary>('/search/claims', {
+  const response = await fetchSearchList<ClaimSummary>('/search/claims', {
     practiceKey,
     query,
     limit,
@@ -77,7 +82,8 @@ export default async function ClaimsPage({ searchParams }: ClaimsPageProps) {
               placeholder="Search claims by key or text"
             />
           </label>
-          <input type="hidden" name="limit" value={limit} />
+          <input type="hidden" name="page" value="1" />
+          <input type="hidden" name="size" value={size} />
           <button type="submit">Apply</button>
         </form>
       </section>
@@ -109,9 +115,7 @@ export default async function ClaimsPage({ searchParams }: ClaimsPageProps) {
         </section>
       ))}
 
-      {total > 0 ? (
-        <PaginationControls limit={limit} skip={skip} total={total} />
-      ) : null}
+      {total > 0 ? <PaginationControls page={page} size={size} total={total} /> : null}
     </div>
   );
 }
