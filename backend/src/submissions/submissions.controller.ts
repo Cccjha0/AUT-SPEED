@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -7,24 +8,52 @@ import {
   Param,
   Patch,
   Post,
-  Query,
-  UsePipes,
-  ValidationPipe
+  Query
 } from '@nestjs/common';
-import type { CreateSubmissionDto } from './dto/create-submission.dto';
-import type { ListSubmissionsQueryDto } from './dto/list-submissions.dto';
-import type { RejectSubmissionDto } from './dto/reject-submission.dto';
 import { SubmissionsService } from './submissions.service';
+import { SubmissionStatus } from './schemas/article-submission.schema';
 
 @Controller('submissions')
 export class SubmissionsController {
   constructor(private readonly submissionsService: SubmissionsService) {}
 
   @Post()
-  @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
-  async create(@Body() payload: CreateSubmissionDto) {
+  async create(@Body() payload: Record<string, unknown>) {
     try {
-      const result = await this.submissionsService.create(payload);
+      const title =
+        typeof payload.title === 'string' ? payload.title.trim() : '';
+      const authors = Array.isArray(payload.authors)
+        ? payload.authors.filter(
+            author => typeof author === 'string' && author.trim()
+          )
+        : [];
+      const venue =
+        typeof payload.venue === 'string' ? payload.venue.trim() : '';
+      const year =
+        typeof payload.year === 'number'
+          ? payload.year
+          : Number(payload.year ?? Number.NaN);
+      const doi =
+        typeof payload.doi === 'string' ? payload.doi.trim() : undefined;
+      const submittedBy =
+        typeof payload.submittedBy === 'string'
+          ? payload.submittedBy.trim()
+          : undefined;
+
+      if (!title || !authors.length || !venue || Number.isNaN(year)) {
+        throw new BadRequestException(
+          'Submission requires title, authors, venue, and year'
+        );
+      }
+
+      const result = await this.submissionsService.create({
+        title,
+        authors,
+        venue,
+        year,
+        doi,
+        submittedBy
+      });
       return this.wrapSuccess(result);
     } catch (error) {
       this.wrapAndThrowError(error);
@@ -42,16 +71,21 @@ export class SubmissionsController {
   }
 
   @Get()
-  @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
-  async findAll(@Query() query: ListSubmissionsQueryDto) {
+  async findAll(@Query() query: Record<string, string | string[] | undefined>) {
     try {
-      const safeQuery = {
-        ...query,
-        limit: query.limit ?? 10,
-        skip: query.skip ?? 0
-      };
+      const limit = Number(query.limit ?? 10);
+      const skip = Number(query.skip ?? 0);
+      const statusParam =
+        typeof query.status === 'string' ? query.status : undefined;
+      const status = statusParam && Object.values(SubmissionStatus).includes(statusParam as SubmissionStatus)
+        ? (statusParam as SubmissionStatus)
+        : undefined;
 
-      const result = await this.submissionsService.findAll(safeQuery);
+      const result = await this.submissionsService.findAll({
+        status,
+        limit: Number.isNaN(limit) ? 10 : limit,
+        skip: Number.isNaN(skip) ? 0 : skip
+      });
       return this.wrapSuccess(result);
     } catch (error) {
       this.wrapAndThrowError(error);
@@ -59,10 +93,22 @@ export class SubmissionsController {
   }
 
   @Patch(':id/reject')
-  @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
-  async reject(@Param('id') id: string, @Body() payload: RejectSubmissionDto) {
+  async reject(
+    @Param('id') id: string,
+    @Body() payload: Record<string, unknown>
+  ) {
     try {
-      const result = await this.submissionsService.reject(id, payload);
+      const rejectionReason =
+        typeof payload.rejectionReason === 'string'
+          ? payload.rejectionReason.trim()
+          : '';
+      if (!rejectionReason) {
+        throw new BadRequestException('Rejection reason is required');
+      }
+
+      const result = await this.submissionsService.reject(id, {
+        rejectionReason
+      });
       return this.wrapSuccess(result);
     } catch (error) {
       this.wrapAndThrowError(error);

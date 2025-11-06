@@ -1,3 +1,4 @@
+import { ErrorMessage } from './ErrorMessage';
 import { apiUrl } from '../lib/config';
 
 interface HealthResponse {
@@ -27,7 +28,7 @@ export default async function HealthStatus() {
     return (
       <section className="card">
         <h2>Backend Health</h2>
-        <p className="error-state">{errorMessage}</p>
+        <ErrorMessage message={errorMessage} />
       </section>
     );
   }

@@ -1,16 +1,13 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
   HttpException,
   HttpStatus,
   Post,
-  Query,
-  UsePipes,
-  ValidationPipe
+  Query
 } from '@nestjs/common';
-import type { CreateRatingDto } from './dto/create-rating.dto';
-import type { GetRatingDto } from './dto/get-rating.dto';
 import { RatingsService } from './ratings.service';
 
 @Controller('ratings')
@@ -18,10 +15,30 @@ export class RatingsController {
   constructor(private readonly ratingsService: RatingsService) {}
 
   @Post()
-  @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
-  async create(@Body() payload: CreateRatingDto) {
+  async create(@Body() payload: Record<string, unknown>) {
     try {
-      const data = await this.ratingsService.create(payload);
+      const doi =
+        typeof payload.doi === 'string' ? payload.doi.trim() : '';
+      const starsRaw =
+        typeof payload.stars === 'number'
+          ? payload.stars
+          : Number(payload.stars ?? Number.NaN);
+      const user =
+        typeof payload.user === 'string' ? payload.user.trim() : undefined;
+
+      if (!doi) {
+        throw new BadRequestException('Rating requires a DOI');
+      }
+
+      if (!Number.isInteger(starsRaw) || starsRaw < 1 || starsRaw > 5) {
+        throw new BadRequestException('Stars must be an integer between 1 and 5');
+      }
+
+      const data = await this.ratingsService.create({
+        doi,
+        stars: starsRaw,
+        user
+      });
       return this.wrapSuccess(data);
     } catch (error) {
       this.wrapAndThrowError(error);
@@ -29,10 +46,17 @@ export class RatingsController {
   }
 
   @Get('avg')
-  @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
-  async average(@Query() query: GetRatingDto) {
+  async average(
+    @Query() query: Record<string, string | string[] | undefined>
+  ) {
     try {
-      const data = await this.ratingsService.average(query);
+      const doi =
+        typeof query.doi === 'string' ? query.doi.trim() : undefined;
+      if (!doi) {
+        throw new BadRequestException('Query requires a DOI');
+      }
+
+      const data = await this.ratingsService.average({ doi });
       return this.wrapSuccess(data);
     } catch (error) {
       this.wrapAndThrowError(error);
@@ -61,3 +85,4 @@ export class RatingsController {
     );
   }
 }
+

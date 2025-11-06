@@ -1,20 +1,21 @@
 import Link from "next/link";
-import { fetchSearchData } from "../../../lib/api";
+import { fetchSearchList } from "../../../lib/api/search";
 import type { EvidenceItem } from "../../../lib/types";
 import { PaginationControls } from "../../../components/PaginationControls";
 import { RatingButton } from "../../../components/RatingButton";
 import { ErrorMessage } from "../../../components/ErrorMessage";
+import { fromPageSize } from "../../../lib/url";
 
 interface EvidencePageProps {
   searchParams?: Record<string, string | string[] | undefined>;
 }
 
-function parseNumber(value: string | string[] | undefined, fallback: number) {
+function parseNumber(value: string | string[] | undefined) {
   if (!value) {
-    return fallback;
+    return undefined;
   }
   const parsed = Array.isArray(value) ? Number.parseInt(value[0], 10) : Number.parseInt(value, 10);
-  return Number.isNaN(parsed) ? fallback : parsed;
+  return Number.isNaN(parsed) ? undefined : parsed;
 }
 
 function parseString(value: string | string[] | undefined) {
@@ -25,22 +26,26 @@ function parseString(value: string | string[] | undefined) {
 }
 
 export default async function EvidencePage({ searchParams }: EvidencePageProps) {
-  const limit = parseNumber(searchParams?.limit, 10);
-  const skip = parseNumber(searchParams?.skip, 0);
   const practiceKey = parseString(searchParams?.practiceKey);
   const claimKey = parseString(searchParams?.claimKey);
   const result = parseString(searchParams?.result);
-  const from = parseNumber(searchParams?.from, NaN);
-  const to = parseNumber(searchParams?.to, NaN);
+  const from = parseNumber(searchParams?.from);
+  const to = parseNumber(searchParams?.to);
+  const { page, size, limit, skip } = fromPageSize({
+    page: parseNumber(searchParams?.page),
+    size: parseNumber(searchParams?.size),
+    limit: parseNumber(searchParams?.limit),
+    skip: parseNumber(searchParams?.skip)
+  });
 
-  const response = await fetchSearchData<EvidenceItem>("/search/evidence", {
+  const response = await fetchSearchList<EvidenceItem>("/search/evidence", {
     limit,
     skip,
     practiceKey,
     claimKey,
     result,
-    from: Number.isNaN(from) ? undefined : from,
-    to: Number.isNaN(to) ? undefined : to
+    from,
+    to
   });
 
   const items = response.data?.items ?? [];
@@ -49,6 +54,17 @@ export default async function EvidencePage({ searchParams }: EvidencePageProps) 
 
   const backToPracticesHref = "/search/practices";
   const backToClaimsHref = practiceKey ? `/search/claims?practiceKey=${practiceKey}` : null;
+  const resetParams = new URLSearchParams({
+    page: '1',
+    size: '10'
+  });
+  if (practiceKey) {
+    resetParams.set('practiceKey', practiceKey);
+  }
+  if (claimKey) {
+    resetParams.set('claimKey', claimKey);
+  }
+  const resetHref = `/search/evidence?${resetParams.toString()}`;
 
   return (
     <div className="page">
@@ -93,11 +109,12 @@ export default async function EvidencePage({ searchParams }: EvidencePageProps) 
             Year To
             <input type="number" name="to" defaultValue={!Number.isNaN(to) ? to : ""} />
           </label>
-          <input type="hidden" name="limit" value={limit} />
+          <input type="hidden" name="page" value="1" />
+          <input type="hidden" name="size" value={size} />
           <button type="submit">Apply Filters</button>
         </form>
         <div className="inline-buttons">
-          <Link className="button-secondary" href="/search/evidence?limit=10&skip=0">
+          <Link className="button-secondary" href={resetHref}>
             Reset Filters
           </Link>
         </div>
@@ -165,7 +182,7 @@ export default async function EvidencePage({ searchParams }: EvidencePageProps) 
         </section>
       ) : null}
 
-      {total > 0 ? <PaginationControls limit={limit} skip={skip} total={total} /> : null}
+      {total > 0 ? <PaginationControls page={page} size={size} total={total} /> : null}
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -8,13 +9,8 @@ import {
   Param,
   Patch,
   Post,
-  Query,
-  UsePipes,
-  ValidationPipe
+  Query
 } from '@nestjs/common';
-import type { CreatePracticeDto } from './dto/create-practice.dto';
-import type { ListPracticesQueryDto } from './dto/list-practices.dto';
-import type { UpdatePracticeDto } from './dto/update-practice.dto';
 import { PracticesService } from './practices.service';
 
 @Controller('practices')
@@ -22,14 +18,14 @@ export class PracticesController {
   constructor(private readonly practicesService: PracticesService) {}
 
   @Get()
-  @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
-  async list(@Query() query: ListPracticesQueryDto) {
+  async list(@Query() query: Record<string, string | string[] | undefined>) {
     try {
-      const safeQuery = {
-        limit: query.limit ?? 10,
-        skip: query.skip ?? 0
-      };
-      const data = await this.practicesService.findAll(safeQuery);
+      const limit = this.parsePositiveInt(query.limit, 10);
+      const skip = this.parsePositiveInt(query.skip, 0);
+      const data = await this.practicesService.findAll({
+        limit,
+        skip
+      });
       return this.wrapSuccess(data);
     } catch (error) {
       this.wrapAndThrowError(error);
@@ -47,10 +43,16 @@ export class PracticesController {
   }
 
   @Post()
-  @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
-  async create(@Body() payload: CreatePracticeDto) {
+  async create(@Body() payload: Record<string, unknown>) {
     try {
-      const data = await this.practicesService.create(payload);
+      const key = typeof payload.key === 'string' ? payload.key.trim() : '';
+      const name = typeof payload.name === 'string' ? payload.name.trim() : '';
+
+      if (!key || !name) {
+        throw new BadRequestException('Practice key and name are required');
+      }
+
+      const data = await this.practicesService.create({ key, name });
       return this.wrapSuccess(data);
     } catch (error) {
       this.wrapAndThrowError(error);
@@ -58,10 +60,15 @@ export class PracticesController {
   }
 
   @Patch(':key')
-  @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
-  async update(@Param('key') key: string, @Body() payload: UpdatePracticeDto) {
+  async update(
+    @Param('key') key: string,
+    @Body() payload: Record<string, unknown>
+  ) {
     try {
-      const data = await this.practicesService.update(key, payload);
+      const name =
+        typeof payload.name === 'string' ? payload.name.trim() : undefined;
+
+      const data = await this.practicesService.update(key, { name });
       return this.wrapSuccess(data);
     } catch (error) {
       this.wrapAndThrowError(error);
@@ -91,12 +98,27 @@ export class PracticesController {
           ? response
           : (response as Record<string, unknown>).message ?? 'Request failed';
       const message = Array.isArray(rawMessage) ? rawMessage.join(', ') : rawMessage;
-      throw new HttpException({ error: true, message }, status);
+      throw new HttpException({ data: null, error: { message } }, status);
     }
 
     throw new HttpException(
-      { error: true, message: 'Request failed' },
+      { data: null, error: { message: 'Request failed' } },
       HttpStatus.INTERNAL_SERVER_ERROR
     );
   }
+
+  private parsePositiveInt(
+    raw: string | string[] | undefined,
+    fallback: number
+  ) {
+    if (Array.isArray(raw) || raw === undefined) {
+      return fallback;
+    }
+    const value = Number(raw);
+    if (!Number.isFinite(value) || value < 0) {
+      return fallback;
+    }
+    return Math.floor(value);
+  }
 }
+

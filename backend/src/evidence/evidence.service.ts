@@ -134,7 +134,6 @@ export class EvidenceService {
         status: SubmissionStatus.Accepted
       })
       .lean();
-
     if (!submission) {
       throw new BadRequestException('Article submission not found or not accepted');
     }

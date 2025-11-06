@@ -1,5 +1,5 @@
-import { apiUrl } from '../../lib/config';
 import { ModerationQueue, type SubmissionItem } from '../../components/ModerationQueue';
+import { fetchRealtimeJson } from '../../lib/api/search';
 
 interface QueueResponse {
   data?: {
@@ -17,17 +17,16 @@ export default async function ModerationPage() {
   let error: string | null = null;
 
   try {
-    const res = await fetch(apiUrl('/moderation/queue?limit=50&skip=0'), {
-      cache: 'no-store'
+    const { response, payload } = await fetchRealtimeJson<QueueResponse>('/moderation/queue', {
+      limit: 50,
+      skip: 0
     });
 
-    const data = (await res.json().catch(() => ({}))) as QueueResponse;
-
-    if (!res.ok) {
-      error = data?.error?.message ?? `Unable to load moderation queue (${res.status})`;
+    if (!response.ok) {
+      error = payload?.error?.message ?? `Unable to load moderation queue (${response.status})`;
     } else {
-      items = data?.data?.items ?? [];
-      total = data?.data?.total ?? items.length;
+      items = payload?.data?.items ?? [];
+      total = payload?.data?.total ?? items.length;
     }
   } catch (err) {
     error = err instanceof Error ? err.message : 'Unable to load moderation queue';

@@ -4,6 +4,7 @@ import {
   NotFoundException
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
+import { instanceToPlain } from 'class-transformer';
 import type { FilterQuery, Model } from 'mongoose';
 import type { CreatePracticeDto } from './dto/create-practice.dto';
 import type { ListPracticesQueryDto } from './dto/list-practices.dto';
@@ -51,7 +52,10 @@ export class PracticesService {
   }
 
   async create(dto: CreatePracticeDto) {
-    const practice = new this.practiceModel(dto);
+    if (!dto?.key || !dto?.name) {
+      throw new BadRequestException('Practice key and name are required');
+    }
+    const practice = new this.practiceModel(instanceToPlain(dto));
     try {
       const saved = await practice.save();
       return saved.toObject();

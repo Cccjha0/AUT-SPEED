@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from 'react';
+import { z } from 'zod';
 import { API_BASE } from '../lib/config';
 import { ErrorMessage } from './ErrorMessage';
 import { LoadingIndicator } from './LoadingIndicator';
@@ -20,6 +21,21 @@ const INITIAL_STATE: FormState = {
   year: '',
   doi: ''
 };
+
+const SubmissionSchema = z.object({
+  title: z.string().min(1, 'Title is required.'),
+  authors: z.array(z.string().min(1, 'Author name is required.')).min(1, 'Please provide at least one author (comma separated).'),
+  venue: z.string().min(1, 'Venue is required.'),
+  year: z
+    .number()
+    .int()
+    .min(1900, 'Year must be 1900 or later.')
+    .max(new Date().getFullYear() + 1, 'Year is out of range.'),
+  doi: z
+    .string()
+    .min(1)
+    .optional()
+});
 
 export function SubmitForm() {
   const [form, setForm] = useState<FormState>(INITIAL_STATE);
@@ -41,11 +57,6 @@ export function SubmitForm() {
       .map(author => author.trim())
       .filter(Boolean);
 
-    if (!authors.length) {
-      setError('Please provide at least one author (comma separated).');
-      return;
-    }
-
     const payload = {
       title: form.title.trim(),
       authors,
@@ -54,8 +65,11 @@ export function SubmitForm() {
       doi: form.doi.trim() || undefined
     };
 
-    if (!payload.title || !payload.venue || Number.isNaN(payload.year)) {
-      setError('Title, venue, and year are required.');
+    const validation = SubmissionSchema.safeParse(payload);
+
+    if (!validation.success) {
+      const firstIssue = validation.error.issues[0];
+      setError(firstIssue?.message ?? 'Invalid submission');
       return;
     }
 
@@ -66,7 +80,7 @@ export function SubmitForm() {
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify(payload)
+          body: JSON.stringify(validation.data)
         });
 
         const result = await response.json().catch(() => ({ error: { message: 'Unknown error' } }));
@@ -145,8 +159,7 @@ export function SubmitForm() {
       {message ? <div className="success-state">{message}</div> : null}
 
       <div className="inline-buttons">
-        <button type="submit" disabled={isPending}
-        >
+        <button type="submit" disabled={isPending}>
           {isPending ? <LoadingIndicator label="Submitting" /> : 'Submit'}
         </button>
         <button
@@ -165,7 +178,4 @@ export function SubmitForm() {
     </form>
   );
 }
-
-
-
 

@@ -32,5 +32,8 @@ jobs:
       - name: Lint workspaces
         run: npm run lint --workspaces
 
+      - name: Test workspaces
+        run: npm run test --workspaces
+
       - name: Build workspaces
         run: npm run build --workspaces

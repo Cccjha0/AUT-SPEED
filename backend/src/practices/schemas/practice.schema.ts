@@ -22,5 +22,3 @@ export class Practice {
 }
 
 export const PracticeSchema = SchemaFactory.createForClass(Practice);
-
-PracticeSchema.index({ key: 1 }, { unique: true });

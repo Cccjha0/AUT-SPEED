@@ -18,7 +18,8 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true
+      whitelist: true,
+      transform: true
     })
   );
 
