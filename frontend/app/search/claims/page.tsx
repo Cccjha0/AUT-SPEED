@@ -61,6 +61,11 @@ export default async function ClaimsPage({ searchParams }: ClaimsPageProps) {
     <div className="page">
       <section className="card">
         <h1>Claims for {practiceKey}</h1>
+        <div className="inline-buttons">
+          <Link className="button-secondary" href="/search/practices">
+            Back to Practices
+          </Link>
+        </div>
         <form method="get" className="form-grid" role="search">
           <input type="hidden" name="practiceKey" value={practiceKey} />
           <label>
