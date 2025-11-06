@@ -1,0 +1,298 @@
+# API Reference
+
+All endpoints are served under the `/api` prefix. Requests and responses use JSON encoded payloads unless otherwise noted. Error responses follow the shape:
+
+```json
+{
+  "data": null,
+  "error": {
+    "message": "Description of what went wrong"
+  }
+}
+```
+
+Standard HTTP error codes:
+
+- `400 Bad Request` – Validation failure, missing required fields, duplicate constraint violations.
+- `404 Not Found` – Requested resource does not exist.
+- `500 Internal Server Error` – Unexpected server fault.
+
+---
+
+## Health
+
+| Method | Path        | Description            |
+| ------ | ----------- | ---------------------- |
+| GET    | `/health`   | Service status check.  |
+
+**Response**
+
+```json
+{
+  "status": "ok",
+  "message": "backend ok",
+  "timestamp": "2025-11-03T08:15:30.123Z"
+}
+```
+
+---
+
+## Practices
+
+| Method | Path                  | Description                     |
+| ------ | --------------------- | ------------------------------- |
+| GET    | `/practices`          | List practices with pagination. |
+| GET    | `/practices/:key`     | Retrieve a single practice.     |
+| POST   | `/practices`          | Create a practice.              |
+| PATCH  | `/practices/:key`     | Update practice name.           |
+| DELETE | `/practices/:key`     | Delete a practice.              |
+
+**List Request**
+
+`GET /api/practices?limit=20&skip=0`
+
+**List Response**
+
+```json
+{
+  "data": {
+    "items": [
+      { "_id": "...", "key": "tdd", "name": "Test-Driven Development", "createdAt": "...", "updatedAt": "..." }
+    ],
+    "total": 1,
+    "limit": 20,
+    "skip": 0
+  },
+  "error": null
+}
+```
+
+**Create Request**
+
+```json
+{
+  "key": "pair-programming",
+  "name": "Pair Programming"
+}
+```
+
+**Create Response**
+
+```json
+{
+  "data": {
+    "_id": "...",
+    "key": "pair-programming",
+    "name": "Pair Programming",
+    "createdAt": "...",
+    "updatedAt": "..."
+  },
+  "error": null
+}
+```
+
+---
+
+## Claims
+
+| Method | Path                  | Description                                  |
+| ------ | --------------------- | -------------------------------------------- |
+| GET    | `/claims`             | List claims (filter by `practiceKey`).       |
+| GET    | `/claims/:key`        | Retrieve a single claim.                     |
+| POST   | `/claims`             | Create a claim linked to a practice.         |
+| PATCH  | `/claims/:key`        | Update claim text or associated practice.    |
+| DELETE | `/claims/:key`        | Delete a claim.                              |
+
+**List Request**
+
+`GET /api/claims?practiceKey=tdd&limit=20&skip=0`
+
+**Create Request**
+
+```json
+{
+  "key": "tdd-improves-quality",
+  "practiceKey": "tdd",
+  "text": "TDD improves software quality."
+}
+```
+
+---
+
+## Submissions
+
+| Method | Path                    | Description                                          |
+| ------ | ----------------------- | ---------------------------------------------------- |
+| POST   | `/submissions`          | Queue a new article submission.                      |
+| GET    | `/submissions/:id`      | Retrieve submission details.                         |
+| GET    | `/submissions`          | List submissions (filter by `status`).               |
+| PATCH  | `/submissions/:id/accept` | Mark submission as accepted.                       |
+| PATCH  | `/submissions/:id/reject` | Reject submission with a reason.                   |
+
+**Create Request**
+
+```json
+{
+  "title": "Empirical Study of TDD",
+  "authors": ["Alice Example", "Bob Example"],
+  "venue": "ICSE",
+  "year": 2024,
+  "doi": "10.1000/example",
+  "submittedBy": "alice@example.com"
+}
+```
+
+**List Request**
+
+`GET /api/submissions?status=queued&limit=20&skip=0`
+
+---
+
+## Moderation
+
+| Method | Path                          | Description                           |
+| ------ | ----------------------------- | ------------------------------------- |
+| GET    | `/moderation/queue`           | List queued submissions.              |
+| POST   | `/moderation/:id/accept`      | Approve queued submission.            |
+| POST   | `/moderation/:id/reject`      | Reject queued submission with reason. |
+
+**Reject Request**
+
+```json
+{
+  "rejectionReason": "Insufficient evidence"
+}
+```
+
+---
+
+## Evidence
+
+| Method | Path               | Description                                            |
+| ------ | ------------------ | ------------------------------------------------------ |
+| POST   | `/evidence`        | Create evidence entry referencing accepted submission. |
+| GET    | `/evidence/:id`    | Retrieve evidence detail.                              |
+| GET    | `/evidence`        | List evidence records with filters and pagination.     |
+
+**Create Request**
+
+```json
+{
+  "articleDoi": "10.1000/example",
+  "practiceKey": "tdd",
+  "claimKey": "tdd-improves-quality",
+  "result": "agree",
+  "methodType": "experiment",
+  "participantType": "practitioner",
+  "notes": "Large scale field study",
+  "analyst": "moderator@example.com"
+}
+```
+
+**List Request**
+
+`GET /api/evidence?practiceKey=tdd&claimKey=tdd-improves-quality&result=agree&from=2020&to=2025&limit=20&skip=0`
+
+**List Response (excerpt)**
+
+```json
+{
+  "data": {
+    "items": [
+      {
+        "_id": "...",
+        "articleDoi": "10.1000/example",
+        "practiceKey": "tdd",
+        "claimKey": "tdd-improves-quality",
+        "result": "agree",
+        "methodType": "experiment",
+        "participantType": "practitioner",
+        "article": {
+          "title": "Empirical Study of TDD",
+          "year": 2024,
+          "doi": "10.1000/example"
+        }
+      }
+    ],
+    "total": 1,
+    "limit": 20,
+    "skip": 0,
+    "aggregations": {
+      "resultCounts": {
+        "agree": 1,
+        "disagree": 0,
+        "mixed": 0
+      }
+    }
+  },
+  "error": null
+}
+```
+
+---
+
+## Ratings
+
+| Method | Path             | Description                                     |
+| ------ | ---------------- | ----------------------------------------------- |
+| POST   | `/ratings`       | Submit rating for an article (1–5 stars).       |
+| GET    | `/ratings/avg`   | Retrieve average rating for `doi`.              |
+
+**Submit Request**
+
+```json
+{
+  "doi": "10.1000/example",
+  "stars": 4,
+  "user": "moderator@example.com"
+}
+```
+
+**Average Request**
+
+`GET /api/ratings/avg?doi=10.1000/example`
+
+**Average Response**
+
+```json
+{
+  "data": {
+    "doi": "10.1000/example",
+    "average": 4.0,
+    "count": 3
+  },
+  "error": null
+}
+```
+
+---
+
+## Search
+
+Read-only endpoints that aggregate data for UI consumption.
+
+| Method | Path                    | Description                                     |
+| ------ | ----------------------- | ----------------------------------------------- |
+| GET    | `/search/practices`     | Search practices (`query`, `limit`, `skip`).    |
+| GET    | `/search/claims`        | Search claims (`practiceKey`, `query`, etc.).   |
+| GET    | `/search/evidence`      | Search evidence with filters, returns aggregations. |
+| GET    | `/search/ratings/avg`   | Same as ratings average helper.                 |
+
+**Example**
+
+`GET /api/search/practices?query=tdd&limit=20&skip=0`
+
+```json
+{
+  "data": {
+    "items": [
+      { "key": "tdd", "name": "Test-Driven Development" }
+    ],
+    "total": 1,
+    "limit": 20,
+    "skip": 0
+  },
+  "error": null
+}
+```
+
