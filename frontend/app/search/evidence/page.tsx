@@ -1,8 +1,9 @@
-import { fetchSearchData } from '../../../lib/api';
-import type { EvidenceItem } from '../../../lib/types';
-import { PaginationControls } from '../../../components/PaginationControls';
-import { RatingButton } from '../../../components/RatingButton';
-import { ErrorMessage } from '../../../components/ErrorMessage';
+import Link from "next/link";
+import { fetchSearchData } from "../../../lib/api";
+import type { EvidenceItem } from "../../../lib/types";
+import { PaginationControls } from "../../../components/PaginationControls";
+import { RatingButton } from "../../../components/RatingButton";
+import { ErrorMessage } from "../../../components/ErrorMessage";
 
 interface EvidencePageProps {
   searchParams?: Record<string, string | string[] | undefined>;
@@ -32,7 +33,7 @@ export default async function EvidencePage({ searchParams }: EvidencePageProps) 
   const from = parseNumber(searchParams?.from, NaN);
   const to = parseNumber(searchParams?.to, NaN);
 
-  const response = await fetchSearchData<EvidenceItem>('/search/evidence', {
+  const response = await fetchSearchData<EvidenceItem>("/search/evidence", {
     limit,
     skip,
     practiceKey,
@@ -46,25 +47,38 @@ export default async function EvidencePage({ searchParams }: EvidencePageProps) 
   const total = response.data?.total ?? 0;
   const resultCounts = (response.data?.aggregations?.resultCounts ?? {}) as Record<string, number>;
 
+  const backToPracticesHref = "/search/practices";
+  const backToClaimsHref = practiceKey ? `/search/claims?practiceKey=${practiceKey}` : null;
+
   return (
     <div className="page">
       <section className="card">
         <h1>Evidence</h1>
+        <div className="inline-buttons">
+          <Link className="button-secondary" href={backToPracticesHref}>
+            Back to Practices
+          </Link>
+          {backToClaimsHref ? (
+            <Link className="button-secondary" href={backToClaimsHref}>
+              Back to Claims
+            </Link>
+          ) : null}
+        </div>
         <p className="text-muted">
           Filter and review evidence records, rate articles, and inspect aggregated outcomes.
         </p>
         <form className="form-grid" method="get">
           <label>
             Practice Key
-            <input name="practiceKey" defaultValue={practiceKey ?? ''} />
+            <input name="practiceKey" defaultValue={practiceKey ?? ""} />
           </label>
           <label>
             Claim Key
-            <input name="claimKey" defaultValue={claimKey ?? ''} />
+            <input name="claimKey" defaultValue={claimKey ?? ""} />
           </label>
           <label>
             Result
-            <select name="result" defaultValue={result ?? ''}>
+            <select name="result" defaultValue={result ?? ""}>
               <option value="">All</option>
               <option value="agree">Agree</option>
               <option value="disagree">Disagree</option>
@@ -73,19 +87,19 @@ export default async function EvidencePage({ searchParams }: EvidencePageProps) 
           </label>
           <label>
             Year From
-            <input type="number" name="from" defaultValue={!Number.isNaN(from) ? from : ''} />
+            <input type="number" name="from" defaultValue={!Number.isNaN(from) ? from : ""} />
           </label>
           <label>
             Year To
-            <input type="number" name="to" defaultValue={!Number.isNaN(to) ? to : ''} />
+            <input type="number" name="to" defaultValue={!Number.isNaN(to) ? to : ""} />
           </label>
           <input type="hidden" name="limit" value={limit} />
           <button type="submit">Apply Filters</button>
         </form>
         <div className="inline-buttons">
-          <a className="button-secondary" href="/search/evidence?limit=10&skip=0">
+          <Link className="button-secondary" href="/search/evidence?limit=10&skip=0">
             Reset Filters
-          </a>
+          </Link>
         </div>
       </section>
 
@@ -93,15 +107,15 @@ export default async function EvidencePage({ searchParams }: EvidencePageProps) 
         <section className="card">
           <h2>Result Summary</h2>
           <p className="text-muted">
-            Agree: {resultCounts.agree ?? 0} | Disagree: {resultCounts.disagree ?? 0} | Mixed:{' '}
-            {resultCounts.mixed ?? 0}
+            Agree: {resultCounts.agree ?? 0} | Disagree: {resultCounts.disagree ?? 0} | Mixed: {
+            resultCounts.mixed ?? 0}
           </p>
         </section>
       ) : null}
 
       {response.error ? (
         <section className="card">
-          <ErrorMessage message={response.error.message ?? 'Unable to load evidence'} />
+          <ErrorMessage message={response.error.message ?? "Unable to load evidence"} />
         </section>
       ) : null}
 
@@ -112,7 +126,7 @@ export default async function EvidencePage({ searchParams }: EvidencePageProps) 
       ) : null}
 
       {items.length ? (
-        <section className="card" style={{ overflowX: 'auto' }}>
+        <section className="card" style={{ overflowX: "auto" }}>
           <table className="data-table">
             <thead>
               <tr>
@@ -134,12 +148,12 @@ export default async function EvidencePage({ searchParams }: EvidencePageProps) 
                 };
                 return (
                   <tr key={item._id}>
-                    <td>{article.title ?? 'Untitled'}</td>
+                    <td>{article.title ?? "Untitled"}</td>
                     <td>{article.doi}</td>
                     <td>{item.result}</td>
                     <td>{item.methodType}</td>
-                    <td>{item.participantType ?? 'unknown'}</td>
-                    <td>{article.year ?? 'N/A'}</td>
+                    <td>{item.participantType ?? "unknown"}</td>
+                    <td>{article.year ?? "N/A"}</td>
                     <td>
                       <RatingButton doi={article.doi} />
                     </td>
