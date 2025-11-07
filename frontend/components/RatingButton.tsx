@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useState } from 'react';
-import { API_BASE } from '../lib/config';
+import { apiUrl } from '../lib/config';
 import type { RatingsAverageResponse } from '../lib/types';
-import { fetchRealtimeJson } from '../lib/api/search';
+import { getJSON } from '../lib/http';
 import { LoadingIndicator } from './LoadingIndicator';
 import { ErrorMessage } from './ErrorMessage';
 
@@ -25,21 +25,21 @@ export function RatingButton({ doi }: RatingButtonProps) {
     try {
       setIsLoading(true);
       setError(null);
-      const { response, payload } = await fetchRealtimeJson<{
-        data?: RatingsAverageResponse;
-        error?: { message?: string } | null;
-      }>('/ratings/avg', { doi });
+      const params = new URLSearchParams({ doi });
+      const payload = await getJSON<RatingsAverageResponse>(
+        `/api/ratings/avg?${params.toString()}`,
+        { cache: 'no-store' }
+      );
 
-      if (!response.ok) {
-        setError(payload?.error?.message ?? 'Unable to load rating');
-        return;
-      }
-
-      setAverage(payload.data?.average ?? null);
-      setCount(payload.data?.count ?? 0);
+      setAverage(payload?.average ?? null);
+      setCount(payload?.count ?? 0);
       setIsOptimistic(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to load rating');
+      const message =
+        typeof err === 'object' && err && 'message' in err
+          ? String((err as { message?: string }).message ?? 'Unable to load rating')
+          : 'Unable to load rating';
+      setError(message);
     } finally {
       setIsLoading(false);
     }
@@ -78,7 +78,7 @@ export function RatingButton({ doi }: RatingButtonProps) {
       setCount(nextCount);
       setIsOptimistic(true);
 
-      const response = await fetch(`${API_BASE}/ratings`, {
+      const response = await fetch(apiUrl('/api/ratings'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

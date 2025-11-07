@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { z } from 'zod';
-import { API_BASE } from '../lib/config';
+import { apiUrl } from '../lib/config';
 import { ErrorMessage } from './ErrorMessage';
 import { LoadingIndicator } from './LoadingIndicator';
 
@@ -75,7 +75,7 @@ export function SubmitForm() {
 
     startTransition(async () => {
       try {
-        const response = await fetch(`${API_BASE}/submissions`, {
+        const response = await fetch(apiUrl('/api/submissions'), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'

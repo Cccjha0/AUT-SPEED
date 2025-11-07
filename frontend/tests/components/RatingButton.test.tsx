@@ -1,22 +1,23 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { RatingButton } from '../../components/RatingButton';
-import { fetchRealtimeJson } from '../../lib/api/search';
+import { getJSON } from '../../lib/http';
 
-vi.mock('../../lib/api/search', () => ({
-  fetchRealtimeJson: vi.fn()
+vi.mock('../../lib/http', () => ({
+  getJSON: vi.fn()
 }));
 
-const fetchRealtimeJsonMock = vi.mocked(fetchRealtimeJson);
+const getJSONMock = vi.mocked(getJSON);
 
 describe('RatingButton', () => {
   const user = userEvent.setup();
 
   beforeEach(() => {
     vi.spyOn(window, 'alert').mockImplementation(() => undefined);
-    fetchRealtimeJsonMock.mockResolvedValue({
-      response: { ok: true } as Response,
-      payload: { data: { doi: '10.1000/example', average: 4, count: 1 } }
+    getJSONMock.mockResolvedValue({
+      doi: '10.1000/example',
+      average: 4,
+      count: 1
     });
   });
 
@@ -28,11 +29,10 @@ describe('RatingButton', () => {
     const fetchMock = vi.fn();
     let resolvePost: (value: Response) => void = () => {};
 
-    fetchRealtimeJsonMock.mockResolvedValue({
-      response: { ok: true } as Response,
-      payload: {
-        data: { doi: '10.1000/example', average: null, count: 0 }
-      }
+    getJSONMock.mockResolvedValue({
+      doi: '10.1000/example',
+      average: null,
+      count: 0
     });
 
     fetchMock.mockImplementationOnce(
@@ -57,7 +57,7 @@ describe('RatingButton', () => {
 
     await user.click(screen.getByRole('button', { name: /rate/i }));
 
-    const realtimeCallCountAfterClick = fetchRealtimeJsonMock.mock.calls.length;
+    const realtimeCallCountAfterClick = getJSONMock.mock.calls.length;
 
     await act(async () => {
       resolvePost({
@@ -67,20 +67,15 @@ describe('RatingButton', () => {
     });
 
     await waitFor(() => expect(window.alert).toHaveBeenCalled());
-    expect(fetchRealtimeJsonMock.mock.calls.length).toBeGreaterThanOrEqual(
-      realtimeCallCountAfterClick
-    );
+    expect(getJSONMock.mock.calls.length).toBeGreaterThanOrEqual(realtimeCallCountAfterClick);
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it('rolls back the optimistic state when the rating request fails', async () => {
-    fetchRealtimeJsonMock.mockResolvedValue({
-      response: {
-        ok: true
-      } as Response,
-      payload: {
-        data: { doi: '10.1000/example', average: 3, count: 1 }
-      }
+    getJSONMock.mockResolvedValue({
+      doi: '10.1000/example',
+      average: 3,
+      count: 1
     });
 
     const fetchMock = vi.fn();
@@ -102,7 +97,7 @@ describe('RatingButton', () => {
     const button = screen.getByRole('button', { name: /rate/i });
 
     await user.hover(button);
-    await waitFor(() => expect(fetchRealtimeJsonMock).toHaveBeenCalled());
+    await waitFor(() => expect(getJSONMock).toHaveBeenCalled());
 
     await user.click(button);
 
