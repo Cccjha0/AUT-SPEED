@@ -1,5 +1,6 @@
 import {
   Controller,
+  HttpCode,
   HttpException,
   HttpStatus,
   Post
@@ -16,6 +17,7 @@ export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
   @Post('practices')
+  @HttpCode(HttpStatus.OK)
   async seedPractices(): Promise<ResponsePayload<unknown>> {
     try {
       const data = await this.adminService.seedPractices();
@@ -26,6 +28,7 @@ export class AdminController {
   }
 
   @Post('claims')
+  @HttpCode(HttpStatus.OK)
   async seedClaims(): Promise<ResponsePayload<unknown>> {
     try {
       const data = await this.adminService.seedClaims();
@@ -36,6 +39,7 @@ export class AdminController {
   }
 
   @Post('submissions-accepted')
+  @HttpCode(HttpStatus.OK)
   async seedSubmissions(): Promise<ResponsePayload<unknown>> {
     try {
       const data = await this.adminService.seedSubmissions();
@@ -46,6 +50,7 @@ export class AdminController {
   }
 
   @Post('evidence')
+  @HttpCode(HttpStatus.OK)
   async seedEvidence(): Promise<ResponsePayload<unknown>> {
     try {
       const data = await this.adminService.seedEvidence();
@@ -56,6 +61,7 @@ export class AdminController {
   }
 
   @Post('all')
+  @HttpCode(HttpStatus.OK)
   async seedAll(): Promise<ResponsePayload<unknown>> {
     try {
       const data = await this.adminService.seedAll();
