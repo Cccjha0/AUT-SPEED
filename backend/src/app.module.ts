@@ -10,6 +10,7 @@ import { PracticesModule } from './practices/practices.module';
 import { RatingsModule } from './ratings/ratings.module';
 import { SearchModule } from './search/search.module';
 import { SubmissionsModule } from './submissions/submissions.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -31,7 +32,8 @@ import { SubmissionsModule } from './submissions/submissions.module';
     EvidenceModule,
     RatingsModule,
     ModerationModule,
-    SearchModule
+    SearchModule,
+    ...(process.env.NODE_ENV !== 'production' ? [AdminModule] : [])
   ],
   controllers: [AppController],
   providers: [AppService]

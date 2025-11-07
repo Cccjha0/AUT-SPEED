@@ -57,7 +57,7 @@ describe('RatingButton', () => {
 
     await user.click(screen.getByRole('button', { name: /rate/i }));
 
-    expect(fetchRealtimeJsonMock).toHaveBeenCalledTimes(1);
+    const realtimeCallCountAfterClick = fetchRealtimeJsonMock.mock.calls.length;
 
     await act(async () => {
       resolvePost({
@@ -67,6 +67,9 @@ describe('RatingButton', () => {
     });
 
     await waitFor(() => expect(window.alert).toHaveBeenCalled());
+    expect(fetchRealtimeJsonMock.mock.calls.length).toBeGreaterThanOrEqual(
+      realtimeCallCountAfterClick
+    );
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 

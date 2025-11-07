@@ -65,3 +65,4 @@ export const ArticleEvidenceSchema = SchemaFactory.createForClass(ArticleEvidenc
 ArticleEvidenceSchema.index({ articleDoi: 1 });
 ArticleEvidenceSchema.index({ practiceKey: 1 });
 ArticleEvidenceSchema.index({ claimKey: 1 });
+ArticleEvidenceSchema.index({ articleDoi: 1, claimKey: 1 }, { unique: true });

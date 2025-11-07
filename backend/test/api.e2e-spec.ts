@@ -23,6 +23,57 @@ describe('REST API (e2e)', () => {
 
   const server = () => testApp.app.getHttpServer();
 
+  describe('Admin seeding', () => {
+    it('populates demo data and remains idempotent', async () => {
+      const first = await request(server())
+        .post('/api/admin/seed/all')
+        .expect(200);
+
+      expect(first.body.data.inserted).toBeGreaterThan(0);
+
+      const second = await request(server())
+        .post('/api/admin/seed/all')
+        .expect(200);
+
+      expect(second.body.data.inserted).toBe(0);
+      expect(second.body.data.skipped).toBeGreaterThan(0);
+
+      const practices = await request(server())
+        .get('/api/search/practices?limit=50&skip=0')
+        .expect(200);
+      const practiceKeys = practices.body.data.items.map((item: { key: string }) => item.key);
+      expect(practiceKeys).toEqual(expect.arrayContaining(['tdd', 'pair', 'review']));
+
+      const claims = await request(server())
+        .get('/api/search/claims?practiceKey=tdd&limit=50&skip=0')
+        .expect(200);
+      const claimKeys = claims.body.data.items.map((item: { key: string }) => item.key);
+      expect(claimKeys).toEqual(
+        expect.arrayContaining(['tdd-improves-quality', 'tdd-increases-effort'])
+      );
+
+      const evidence = await request(server())
+        .get('/api/search/evidence?practiceKey=tdd&limit=50&skip=0')
+        .expect(200);
+      expect(evidence.body.data.items.length).toBeGreaterThan(0);
+      expect(evidence.body.data.aggregations.resultCounts.agree).toBeGreaterThanOrEqual(1);
+
+      const submissions = await request(server())
+        .get('/api/submissions?limit=20&skip=0')
+        .expect(200);
+      const acceptedDois = submissions.body.data.items
+        .filter((item: { status: string }) => item.status === 'accepted')
+        .map((item: { doi: string }) => item.doi);
+
+      const evidenceList = await request(server())
+        .get('/api/evidence?practiceKey=tdd&limit=20&skip=0')
+        .expect(200);
+      evidenceList.body.data.items.forEach((item: { articleDoi: string }) => {
+        expect(acceptedDois).toContain(item.articleDoi);
+      });
+    });
+  });
+
   describe('Practices', () => {
     it('returns 400 when key or name missing', async () => {
       const res1 = await request(server())
