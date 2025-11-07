@@ -26,7 +26,7 @@ import {
 interface SeedResult {
   inserted: number;
   skipped: number;
-  details: Array<Record<string, unknown>>;
+  details: Record<string, unknown>[];
 }
 
 @Injectable()
