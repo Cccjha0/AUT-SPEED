@@ -1,18 +1,48 @@
 import serverlessExpress from '@vendia/serverless-express';
 import type { IncomingMessage, ServerResponse } from 'http';
-import { createApp } from '../src/bootstrap';
+import path from 'node:path';
 
-let cachedApp: Awaited<ReturnType<typeof createApp>> | undefined;
+type BootstrapModule = typeof import('../src/bootstrap');
+
+let cachedBootstrap: BootstrapModule | null = null;
+let cachedAppPromise: ReturnType<BootstrapModule['createApp']> | null = null;
 let cachedProxy: ReturnType<typeof serverlessExpress> | undefined;
+
+function loadBootstrap(): BootstrapModule {
+  if (cachedBootstrap) {
+    return cachedBootstrap;
+  }
+
+  const compiledPath = path.join(__dirname, '..', 'bootstrap');
+
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    cachedBootstrap = require(compiledPath) as BootstrapModule;
+    return cachedBootstrap;
+  } catch {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    cachedBootstrap = require('../src/bootstrap') as BootstrapModule;
+    return cachedBootstrap;
+  }
+}
+
+async function getExpressApp() {
+  if (!cachedAppPromise) {
+    const { createApp } = loadBootstrap();
+    cachedAppPromise = createApp();
+  }
+  return cachedAppPromise;
+}
 
 export default async function handler(req: any, res: any) {
   if (!cachedProxy) {
-    cachedApp = await createApp();
-    cachedProxy = serverlessExpress({ app: cachedApp });
+    const app = await getExpressApp();
+    cachedProxy = serverlessExpress({ app });
   }
 
-  if (cachedApp && looksLikeNodeRequest(req, res)) {
-    return cachedApp(req, res);
+  if (looksLikeNodeRequest(req, res)) {
+    const app = await getExpressApp();
+    return app(req, res);
   }
 
   return cachedProxy(req, res);
