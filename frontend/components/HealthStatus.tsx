@@ -1,8 +1,9 @@
 import { ErrorMessage } from './ErrorMessage';
-import { apiUrl } from '../lib/config';
+import { getJSON } from '../lib/http';
 
 interface HealthResponse {
   status: string;
+  message?: string;
   timestamp?: string;
 }
 
@@ -11,17 +12,13 @@ export default async function HealthStatus() {
   let errorMessage: string | null = null;
 
   try {
-    const res = await fetch(apiUrl('/health'), {
-      cache: 'no-store'
-    });
-
-    if (!res.ok) {
-      errorMessage = `Health check failed (${res.status})`;
-    } else {
-      data = (await res.json()) as HealthResponse;
-    }
+    data = await getJSON<HealthResponse>('/api/health', { cache: 'no-store' });
   } catch (error) {
-    errorMessage = error instanceof Error ? error.message : 'Unable to reach API';
+    const message =
+      typeof error === 'object' && error && 'message' in error
+        ? String((error as { message?: string }).message ?? 'Unable to reach API')
+        : 'Unable to reach API';
+    errorMessage = message;
   }
 
   if (errorMessage) {
@@ -37,6 +34,7 @@ export default async function HealthStatus() {
     <section className="card">
       <h2>Backend Health</h2>
       <p className="success-state">Status: {data?.status ?? 'unknown'}</p>
+      {data?.message ? <p>{data.message}</p> : null}
       {data?.timestamp ? (
         <p className="text-muted">Last checked: {new Date(data.timestamp).toLocaleString()}</p>
       ) : null}

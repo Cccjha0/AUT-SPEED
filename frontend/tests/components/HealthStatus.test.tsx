@@ -1,5 +1,12 @@
 import { render, screen } from '@testing-library/react';
 import HealthStatus from '../../components/HealthStatus';
+import { getJSON } from '../../lib/http';
+
+vi.mock('../../lib/http', () => ({
+  getJSON: vi.fn()
+}));
+
+const getJSONMock = vi.mocked(getJSON);
 
 describe('HealthStatus', () => {
   afterEach(() => {
@@ -7,33 +14,30 @@ describe('HealthStatus', () => {
   });
 
   it('renders backend status when health endpoint succeeds', async () => {
-    const fetchMock = vi
-      .spyOn(global, 'fetch')
-      .mockResolvedValue({
-        ok: true,
-        json: vi.fn().mockResolvedValue({ status: 'ok' })
-      } as unknown as Response);
+    getJSONMock.mockResolvedValue({
+      status: 'ok',
+      message: 'All systems nominal',
+      timestamp: new Date().toISOString()
+    });
 
     const view = await HealthStatus();
     render(view);
 
-    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/health'), expect.any(Object));
+    expect(getJSONMock).toHaveBeenCalledWith('/api/health', expect.any(Object));
     expect(screen.getByText('Status: ok')).toBeInTheDocument();
+    expect(screen.getByText('All systems nominal')).toBeInTheDocument();
   });
 
   it('renders error message when health endpoint fails', async () => {
-    const fetchMock = vi
-      .spyOn(global, 'fetch')
-      .mockResolvedValue({
-        ok: false,
-        status: 500,
-        json: vi.fn().mockResolvedValue({})
-      } as unknown as Response);
+    getJSONMock.mockRejectedValue({
+      status: 500,
+      message: 'Health check failed'
+    });
 
     const view = await HealthStatus();
     render(view);
 
-    expect(fetchMock).toHaveBeenCalled();
+    expect(getJSONMock).toHaveBeenCalled();
     expect(screen.getByText(/health check failed/i)).toBeInTheDocument();
   });
 });

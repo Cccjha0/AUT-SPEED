@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from 'react';
-import { API_BASE } from '../lib/config';
+import { apiUrl } from '../lib/config';
 import { ErrorMessage } from './ErrorMessage';
 import { LoadingIndicator } from './LoadingIndicator';
 
@@ -52,7 +52,7 @@ export function ModerationQueue({ items, total, initialError }: ModerationQueueP
 
     startTransition(async () => {
       try {
-        const response = await fetch(`${API_BASE}/moderation/${id}/${action}`, {
+        const response = await fetch(apiUrl(`/api/moderation/${id}/${action}`), {
           method: 'POST',
           headers: payload ? { 'Content-Type': 'application/json' } : undefined,
           body: payload ? JSON.stringify(payload) : undefined

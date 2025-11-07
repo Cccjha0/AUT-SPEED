@@ -1,14 +1,24 @@
 import { ModerationQueue, type SubmissionItem } from '../../components/ModerationQueue';
-import { fetchRealtimeJson } from '../../lib/api/search';
+import { getJSON } from '../../lib/http';
 
 interface QueueResponse {
-  data?: {
-    items: SubmissionItem[];
-    total: number;
-    limit: number;
-    skip: number;
-  };
-  error?: { message?: string } | null;
+  items: SubmissionItem[];
+  total: number;
+  limit: number;
+  skip: number;
+}
+
+function buildQuery(params: Record<string, string | number | undefined>) {
+  const searchParams = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === '') {
+      return;
+    }
+    searchParams.set(key, String(value));
+  });
+
+  const query = searchParams.toString();
+  return query ? `?${query}` : '';
 }
 
 export default async function ModerationPage() {
@@ -17,19 +27,17 @@ export default async function ModerationPage() {
   let error: string | null = null;
 
   try {
-    const { response, payload } = await fetchRealtimeJson<QueueResponse>('/moderation/queue', {
-      limit: 50,
-      skip: 0
-    });
-
-    if (!response.ok) {
-      error = payload?.error?.message ?? `Unable to load moderation queue (${response.status})`;
-    } else {
-      items = payload?.data?.items ?? [];
-      total = payload?.data?.total ?? items.length;
-    }
+    const data = await getJSON<QueueResponse>(
+      `/api/moderation/queue${buildQuery({ limit: 50, skip: 0 })}`,
+      { cache: 'no-store' }
+    );
+    items = data?.items ?? [];
+    total = data?.total ?? items.length;
   } catch (err) {
-    error = err instanceof Error ? err.message : 'Unable to load moderation queue';
+    error =
+      typeof err === 'object' && err && 'message' in err
+        ? String((err as { message?: string }).message ?? 'Unable to load moderation queue')
+        : 'Unable to load moderation queue';
   }
 
   return (

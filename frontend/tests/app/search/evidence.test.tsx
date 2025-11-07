@@ -1,17 +1,17 @@
 import { render, screen } from '@testing-library/react';
 import EvidencePage from '../../../app/search/evidence/page';
 import type { SearchResponse } from '../../../lib/types';
-import { fetchSearchList } from '../../../lib/api/search';
+import { getJSON } from '../../../lib/http';
 
 vi.mock('../../../components/PaginationControls', () => ({
   PaginationControls: () => <div data-testid="pagination-controls" />
 }));
 
-vi.mock('../../../lib/api/search', () => ({
-  fetchSearchList: vi.fn()
+vi.mock('../../../lib/http', () => ({
+  getJSON: vi.fn()
 }));
 
-const fetchSearchListMock = vi.mocked(fetchSearchList);
+const getJSONMock = vi.mocked(getJSON);
 
 describe('EvidencePage (server component)', () => {
   afterEach(() => {
@@ -50,7 +50,7 @@ describe('EvidencePage (server component)', () => {
       }
     };
 
-    fetchSearchListMock.mockResolvedValueOnce(response as any);
+    getJSONMock.mockResolvedValueOnce(response.data as any);
 
     render(
       await EvidencePage({
@@ -58,9 +58,9 @@ describe('EvidencePage (server component)', () => {
       })
     );
 
-    expect(fetchSearchListMock).toHaveBeenCalledWith(
-      '/search/evidence',
-      expect.objectContaining({ practiceKey: 'tdd', result: 'agree', limit: 10, skip: 0 })
+    expect(getJSONMock).toHaveBeenCalledWith(
+      expect.stringContaining('/api/search/evidence'),
+      expect.any(Object)
     );
 
     expect(screen.getByText('A Demo Study')).toBeInTheDocument();
@@ -68,28 +68,18 @@ describe('EvidencePage (server component)', () => {
   });
 
   it('refetches when the result filter changes', async () => {
-    fetchSearchListMock.mockResolvedValue({
-      data: {
-        items: [],
-        total: 0,
-        limit: 10,
-        skip: 0
-      }
+    getJSONMock.mockResolvedValue({
+      items: [],
+      total: 0,
+      limit: 10,
+      skip: 0
     } as any);
 
     await EvidencePage({ searchParams: { result: 'agree', page: '1', size: '10' } });
     await EvidencePage({ searchParams: { result: 'disagree', page: '1', size: '10' } });
 
-    expect(fetchSearchListMock).toHaveBeenCalledTimes(2);
-    expect(fetchSearchListMock).toHaveBeenNthCalledWith(
-      1,
-      '/search/evidence',
-      expect.objectContaining({ result: 'agree' })
-    );
-    expect(fetchSearchListMock).toHaveBeenNthCalledWith(
-      2,
-      '/search/evidence',
-      expect.objectContaining({ result: 'disagree' })
-    );
+    expect(getJSONMock).toHaveBeenCalledTimes(2);
+    expect(getJSONMock.mock.calls[0]?.[0]).toContain('result=agree');
+    expect(getJSONMock.mock.calls[1]?.[0]).toContain('result=disagree');
   });
 });

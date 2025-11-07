@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { fetchSearchList } from "../../../lib/api/search";
-import type { EvidenceItem } from "../../../lib/types";
+import { getJSON } from "../../../lib/http";
+import type { EvidenceItem, SearchResponse } from "../../../lib/types";
 import { PaginationControls } from "../../../components/PaginationControls";
 import { RatingButton } from "../../../components/RatingButton";
 import { ErrorMessage } from "../../../components/ErrorMessage";
@@ -25,6 +25,18 @@ function parseString(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
 }
 
+function buildQuery(params: Record<string, string | number | undefined>) {
+  const searchParams = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === '') {
+      return;
+    }
+    searchParams.set(key, String(value));
+  });
+  const query = searchParams.toString();
+  return query ? `?${query}` : '';
+}
+
 export default async function EvidencePage({ searchParams }: EvidencePageProps) {
   const practiceKey = parseString(searchParams?.practiceKey);
   const claimKey = parseString(searchParams?.claimKey);
@@ -38,19 +50,36 @@ export default async function EvidencePage({ searchParams }: EvidencePageProps) 
     skip: parseNumber(searchParams?.skip)
   });
 
-  const response = await fetchSearchList<EvidenceItem>("/search/evidence", {
-    limit,
-    skip,
-    practiceKey,
-    claimKey,
-    result,
-    from,
-    to
-  });
+  let errorMessage: string | null = null;
+  let items: EvidenceItem[] = [];
+  let total = 0;
+  let resultCounts: Record<string, number> = {};
 
-  const items = response.data?.items ?? [];
-  const total = response.data?.total ?? 0;
-  const resultCounts = (response.data?.aggregations?.resultCounts ?? {}) as Record<string, number>;
+  try {
+    const data = await getJSON<SearchResponse<EvidenceItem>["data"]>(
+      `/api/search/evidence${buildQuery({
+        limit,
+        skip,
+        practiceKey,
+        claimKey,
+        result,
+        from,
+        to
+      })}`,
+      {
+        next: { revalidate: 60 }
+      }
+    );
+
+    items = data?.items ?? [];
+    total = data?.total ?? 0;
+    resultCounts = (data?.aggregations?.resultCounts ?? {}) as Record<string, number>;
+  } catch (error) {
+    errorMessage =
+      typeof error === "object" && error && "message" in error
+        ? String((error as { message?: string }).message ?? "Unable to load evidence")
+        : "Unable to load evidence";
+  }
 
   const backToPracticesHref = "/search/practices";
   const backToClaimsHref = practiceKey ? `/search/claims?practiceKey=${practiceKey}` : null;
@@ -130,13 +159,13 @@ export default async function EvidencePage({ searchParams }: EvidencePageProps) 
         </section>
       ) : null}
 
-      {response.error ? (
+      {errorMessage ? (
         <section className="card">
-          <ErrorMessage message={response.error.message ?? "Unable to load evidence"} />
+          <ErrorMessage message={errorMessage ?? "Unable to load evidence"} />
         </section>
       ) : null}
 
-      {!response.error && items.length === 0 ? (
+      {!errorMessage && items.length === 0 ? (
         <section className="card">
           <p className="text-muted">No evidence found. Adjust your filters or try a different claim.</p>
         </section>

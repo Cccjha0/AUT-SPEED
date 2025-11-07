@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
-import { fetchSearchList } from '../../../lib/api/search';
-import type { PracticeSummary } from '../../../lib/types';
+import { getJSON } from '../../../lib/http';
+import type { PracticeSummary, SearchResponse } from '../../../lib/types';
 import { PaginationControls } from '../../../components/PaginationControls';
 import { fromPageSize } from '../../../lib/url';
 
@@ -28,6 +28,19 @@ function parseString(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
 }
 
+function buildQuery(params: Record<string, string | number | undefined>) {
+  const searchParams = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === '') {
+      return;
+    }
+    searchParams.set(key, String(value));
+  });
+
+  const query = searchParams.toString();
+  return query ? `?${query}` : '';
+}
+
 export default async function PracticesPage({ searchParams }: PracticesPageProps) {
   const query = parseString(searchParams?.query);
   const { page, size, limit, skip } = fromPageSize({
@@ -37,14 +50,25 @@ export default async function PracticesPage({ searchParams }: PracticesPageProps
     skip: parseNumber(searchParams?.skip)
   });
 
-  const response = await fetchSearchList<PracticeSummary>('/search/practices', {
-    limit,
-    skip,
-    query
-  });
+  let errorMessage: string | null = null;
+  let items: PracticeSummary[] = [];
+  let total = 0;
 
-  const items = response.data?.items ?? [];
-  const total = response.data?.total ?? 0;
+  try {
+    const data = await getJSON<SearchResponse<PracticeSummary>['data']>(
+      `/api/search/practices${buildQuery({ limit, skip, query })}`,
+      {
+        next: { revalidate: 60 }
+      }
+    );
+    items = data?.items ?? [];
+    total = data?.total ?? 0;
+  } catch (error) {
+    errorMessage =
+      typeof error === 'object' && error && 'message' in error
+        ? String((error as { message?: string }).message ?? 'Unable to load practices')
+        : 'Unable to load practices';
+  }
 
   return (
     <div className="page">
@@ -69,13 +93,13 @@ export default async function PracticesPage({ searchParams }: PracticesPageProps
         </form>
       </section>
 
-      {response.error ? (
+      {errorMessage ? (
         <section className="card">
-          <p className="error-state">{response.error.message}</p>
+          <p className="error-state">{errorMessage}</p>
         </section>
       ) : null}
 
-      {!response.error && items.length === 0 ? (
+      {!errorMessage && items.length === 0 ? (
         <section className="card">
           <p className="text-muted">No practices found. Try adjusting your search.</p>
         </section>
