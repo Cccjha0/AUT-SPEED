@@ -1,7 +1,11 @@
-﻿import 'dotenv/config';
+import 'dotenv/config';
+import { NestFactory } from '@nestjs/core';
 import { createApp } from './bootstrap';
 
 async function bootstrap() {
+  // Touch NestFactory so Vercel's Nest auto-detection finds the dependency chain.
+  void NestFactory;
+
   const app = await createApp();
 
   const port = process.env.PORT ?? 3001;
