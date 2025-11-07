@@ -296,3 +296,41 @@ Read-only endpoints that aggregate data for UI consumption.
 }
 ```
 
+
+---
+
+## Admin (Development Only)
+
+> **Note:** These routes are only enabled when `NODE_ENV !== 'production'`. In production they return `404`.
+
+Admin endpoints load predefined demo data and are idempotent (repeated calls simply increase the `skipped` count).
+
+| Method | Path                               | Description                                   |
+| ------ | ---------------------------------- | --------------------------------------------- |
+| POST   | `/admin/seed/practices`            | Upsert demo practices.                        |
+| POST   | `/admin/seed/claims`               | Upsert demo claims.                           |
+| POST   | `/admin/seed/submissions-accepted` | Upsert demo submissions with `status=accepted`. |
+| POST   | `/admin/seed/evidence`             | Upsert demo evidence referencing accepted DOIs. |
+| POST   | `/admin/seed/all`                  | Runs the four endpoints sequentially and aggregates results. |
+
+**Example**
+
+`POST /api/admin/seed/all`
+
+```json
+{
+  "data": {
+    "inserted": 9,
+    "skipped": 0,
+    "details": [
+      { "type": "practices", "inserted": 3, "skipped": 0, "details": [ ... ] },
+      { "type": "claims", "inserted": 4, "skipped": 0, "details": [ ... ] },
+      { "type": "submissions", "inserted": 2, "skipped": 0, "details": [ ... ] },
+      { "type": "evidence", "inserted": 3, "skipped": 0, "details": [ ... ] }
+    ]
+  },
+  "error": null
+}
+```
+
+Subsequent calls return the same shape but with `inserted: 0` and `skipped` reflecting the number of already-present records.
