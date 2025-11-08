@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { ModerationQueue, type SubmissionItem } from '../../components/ModerationQueue';
 import { getJSON } from '../../lib/http';
 
@@ -42,6 +43,13 @@ export default async function ModerationPage() {
 
   return (
     <div className="page">
+      <section className="card">
+        <div className="inline-buttons">
+          <Link className="button-secondary" href="/moderation/rejected">
+            View Rejected Submissions
+          </Link>
+        </div>
+      </section>
       <ModerationQueue items={items} total={total} initialError={error ?? undefined} />
     </div>
   );

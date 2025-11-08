@@ -10,6 +10,7 @@ import { Types } from 'mongoose';
 import type { CreateSubmissionDto } from './dto/create-submission.dto';
 import type { ListSubmissionsQueryDto } from './dto/list-submissions.dto';
 import type { RejectSubmissionDto } from './dto/reject-submission.dto';
+import type { ModerationDecisionDto } from './dto/moderation-decision.dto';
 import {
   ArticleSubmission,
   ArticleSubmissionDocument,
@@ -78,16 +79,27 @@ export class SubmissionsService {
     };
   }
 
-  async accept(id: string) {
+  async accept(id: string, decision: ModerationDecisionDto = {}) {
     this.ensureValidId(id);
     try {
+      const update: Record<string, unknown> = {
+        status: SubmissionStatus.Accepted,
+        lastDecisionAt: new Date(),
+        $unset: { rejectionReason: '' }
+      };
+      if (decision.peerReviewed !== undefined) {
+        update.peerReviewed = decision.peerReviewed;
+      }
+      if (decision.seRelated !== undefined) {
+        update.seRelated = decision.seRelated;
+      }
+      if (decision.decisionNotes !== undefined) {
+        update.decisionNotes = decision.decisionNotes;
+      }
       const updated = await this.submissionModel
         .findByIdAndUpdate(
           id,
-          {
-            status: SubmissionStatus.Accepted,
-            $unset: { rejectionReason: '' }
-          },
+          update,
           {
             new: true
           }
@@ -107,13 +119,24 @@ export class SubmissionsService {
   async reject(id: string, dto: RejectSubmissionDto) {
     this.ensureValidId(id);
     try {
+      const update: Record<string, unknown> = {
+        status: SubmissionStatus.Rejected,
+        rejectionReason: dto.rejectionReason,
+        lastDecisionAt: new Date()
+      };
+      if (dto.peerReviewed !== undefined) {
+        update.peerReviewed = dto.peerReviewed;
+      }
+      if (dto.seRelated !== undefined) {
+        update.seRelated = dto.seRelated;
+      }
+      if (dto.decisionNotes !== undefined) {
+        update.decisionNotes = dto.decisionNotes;
+      }
       const updated = await this.submissionModel
         .findByIdAndUpdate(
           id,
-          {
-            status: SubmissionStatus.Rejected,
-            rejectionReason: dto.rejectionReason
-          },
+          update,
           { new: true }
         )
         .lean();
@@ -126,6 +149,65 @@ export class SubmissionsService {
     } catch (error) {
       this.handleMongooseError(error);
     }
+  }
+
+  async checkByDoi(doi: string) {
+    if (!doi) {
+      return { exists: false };
+    }
+    const normalized = doi.trim().toLowerCase();
+    const submission = await this.submissionModel
+      .findOne({ doi: normalized })
+      .lean();
+    if (!submission) {
+      return { exists: false };
+    }
+    return {
+      exists: true,
+      status: submission.status,
+      lastDecisionAt:
+        submission.lastDecisionAt ??
+        submission.updatedAt ??
+        submission.createdAt,
+      decisionNotes: submission.decisionNotes ?? null
+    };
+  }
+
+  async listRejections(params: {
+    query?: string;
+    year?: number;
+    limit?: number;
+    skip?: number;
+  }) {
+    const { query, year, limit = 10, skip = 0 } = params;
+    const safeLimit = Math.min(Math.max(limit, 0), 100);
+    const safeSkip = Math.max(skip, 0);
+    const filter: FilterQuery<ArticleSubmissionDocument> = {
+      status: SubmissionStatus.Rejected
+    };
+    if (year) {
+      filter.year = year;
+    }
+    if (query) {
+      const regex = new RegExp(query, 'i');
+      filter.$or = [
+        { title: regex },
+        { authors: regex },
+        { venue: regex },
+        { doi: regex },
+        { submittedBy: regex }
+      ];
+    }
+    const [items, total] = await Promise.all([
+      this.submissionModel
+        .find(filter)
+        .sort({ lastDecisionAt: -1, createdAt: -1 })
+        .skip(safeSkip)
+        .limit(safeLimit)
+        .lean(),
+      this.submissionModel.countDocuments(filter)
+    ]);
+    return { items, total, limit: safeLimit, skip: safeSkip };
   }
 
   private ensureValidId(id: string) {

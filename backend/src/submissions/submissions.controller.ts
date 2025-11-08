@@ -12,6 +12,13 @@ import {
 } from '@nestjs/common';
 import { SubmissionsService } from './submissions.service';
 import { SubmissionStatus } from './schemas/article-submission.schema';
+import { ModerationDecisionDto } from './dto/moderation-decision.dto';
+import { RejectSubmissionDto } from './dto/reject-submission.dto';
+
+const DOI_REGEX = /^10\.\S+$/i;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const DOI_ERROR =
+  'DOI must be the identifier only (e.g. 10.1000/xyz123) without links.';
 
 @Controller('submissions')
 export class SubmissionsController {
@@ -33,17 +40,46 @@ export class SubmissionsController {
         typeof payload.year === 'number'
           ? payload.year
           : Number(payload.year ?? Number.NaN);
-      const doi =
-        typeof payload.doi === 'string' ? payload.doi.trim() : undefined;
+      const doiRaw =
+        typeof payload.doi === 'string' ? payload.doi.trim() : '';
       const submittedBy =
         typeof payload.submittedBy === 'string'
           ? payload.submittedBy.trim()
-          : undefined;
+          : '';
+      const submitterEmail =
+        typeof payload.submitterEmail === 'string'
+          ? payload.submitterEmail.trim()
+          : '';
 
-      if (!title || !authors.length || !venue || Number.isNaN(year)) {
+      const hasForbiddenDoiPrefix =
+        /^https?:\/\//i.test(doiRaw) ||
+        /^doi:/i.test(doiRaw) ||
+        /doi\.org/i.test(doiRaw);
+      const doi = doiRaw ? doiRaw.trim() : undefined;
+
+      if (
+        !title ||
+        !authors.length ||
+        !venue ||
+        Number.isNaN(year) ||
+        !submittedBy ||
+        !submitterEmail
+      ) {
         throw new BadRequestException(
-          'Submission requires title, authors, venue, and year'
+          'Submission requires contact info (name/email) and complete citation metadata'
         );
+      }
+
+      if (hasForbiddenDoiPrefix) {
+        throw new BadRequestException(DOI_ERROR);
+      }
+
+      if (doi && !DOI_REGEX.test(doi)) {
+        throw new BadRequestException(DOI_ERROR);
+      }
+
+      if (!EMAIL_REGEX.test(submitterEmail)) {
+        throw new BadRequestException('A valid submitter email is required');
       }
 
       const result = await this.submissionsService.create({
@@ -52,7 +88,53 @@ export class SubmissionsController {
         venue,
         year,
         doi,
-        submittedBy
+        submittedBy,
+        submitterEmail
+      });
+      return this.wrapSuccess(result);
+    } catch (error) {
+      this.wrapAndThrowError(error);
+    }
+  }
+
+  @Get('check')
+  async check(@Query('doi') doi?: string) {
+    try {
+      if (!doi || !doi.trim()) {
+        return this.wrapSuccess({ exists: false });
+      }
+      const trimmed = doi.trim();
+      const hasForbidden =
+        /^https?:\/\//i.test(trimmed) ||
+        /^doi:/i.test(trimmed) ||
+        /doi\.org/i.test(trimmed);
+      if (hasForbidden || !DOI_REGEX.test(trimmed)) {
+        return this.wrapSuccess({ exists: false });
+      }
+      const result = await this.submissionsService.checkByDoi(trimmed);
+      return this.wrapSuccess(result);
+    } catch (error) {
+      this.wrapAndThrowError(error);
+    }
+  }
+
+  @Get('rejections')
+  async listRejections(
+    @Query() query: Record<string, string | string[] | undefined>
+  ) {
+    try {
+      const q = typeof query.query === 'string' ? query.query.trim() : undefined;
+      const yearParam =
+        typeof query.year === 'string' ? Number(query.year) : undefined;
+      const limitParam =
+        typeof query.limit === 'string' ? Number(query.limit) : undefined;
+      const skipParam =
+        typeof query.skip === 'string' ? Number(query.skip) : undefined;
+      const result = await this.submissionsService.listRejections({
+        query: q,
+        year: Number.isFinite(yearParam) ? (yearParam as number) : undefined,
+        limit: Number.isFinite(limitParam) ? (limitParam as number) : undefined,
+        skip: Number.isFinite(skipParam) ? (skipParam as number) : undefined
       });
       return this.wrapSuccess(result);
     } catch (error) {
@@ -95,19 +177,16 @@ export class SubmissionsController {
   @Patch(':id/reject')
   async reject(
     @Param('id') id: string,
-    @Body() payload: Record<string, unknown>
+    @Body() payload: RejectSubmissionDto
   ) {
     try {
-      const rejectionReason =
-        typeof payload.rejectionReason === 'string'
-          ? payload.rejectionReason.trim()
-          : '';
-      if (!rejectionReason) {
+      const reason = payload.rejectionReason?.trim();
+      if (!reason) {
         throw new BadRequestException('Rejection reason is required');
       }
-
       const result = await this.submissionsService.reject(id, {
-        rejectionReason
+        ...payload,
+        rejectionReason: reason
       });
       return this.wrapSuccess(result);
     } catch (error) {
@@ -116,9 +195,12 @@ export class SubmissionsController {
   }
 
   @Patch(':id/accept')
-  async accept(@Param('id') id: string) {
+  async accept(
+    @Param('id') id: string,
+    @Body() payload: ModerationDecisionDto
+  ) {
     try {
-      const result = await this.submissionsService.accept(id);
+      const result = await this.submissionsService.accept(id, payload);
       return this.wrapSuccess(result);
     } catch (error) {
       this.wrapAndThrowError(error);

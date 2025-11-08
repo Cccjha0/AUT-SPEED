@@ -140,7 +140,8 @@ describe('REST API (e2e)', () => {
           venue: 'Conf',
           year: invalidYear,
           doi: '10.1000/invalid-year',
-          submittedBy: 'user@example.com'
+          submittedBy: 'user@example.com',
+          submitterEmail: 'user@example.com'
         })
         .expect(400);
     });
@@ -154,7 +155,8 @@ describe('REST API (e2e)', () => {
           venue: 'Conf',
           year: new Date().getFullYear(),
           doi: '10.1000/queued',
-          submittedBy: 'user@example.com'
+          submittedBy: 'user@example.com',
+          submitterEmail: 'user@example.com'
         })
         .expect(201);
 
@@ -175,7 +177,8 @@ describe('REST API (e2e)', () => {
           venue: 'Conf',
           year: new Date().getFullYear(),
           doi: '10.1000/reject',
-          submittedBy: 'user@example.com'
+          submittedBy: 'user@example.com',
+          submitterEmail: 'user@example.com'
         })
         .expect(201);
 
@@ -206,7 +209,8 @@ describe('REST API (e2e)', () => {
           venue: 'Venue',
           year: new Date().getFullYear(),
           doi: '10.1000/unaccepted',
-          submittedBy: 'user@example.com'
+          submittedBy: 'user@example.com',
+          submitterEmail: 'user@example.com'
         })
         .expect(201);
 
@@ -293,7 +297,8 @@ describe('REST API (e2e)', () => {
           venue: 'Journal',
           year: 2020,
           doi: '10.1000/history',
-          submittedBy: 'user@example.com'
+          submittedBy: 'user@example.com',
+          submitterEmail: 'user@example.com'
         })
         .expect(201);
 
@@ -423,7 +428,8 @@ describe('REST API (e2e)', () => {
           venue: 'Venue',
           year: new Date().getFullYear(),
           doi: '10.1000/paginate-a',
-          submittedBy: 'queue@example.com'
+          submittedBy: 'queue@example.com',
+          submitterEmail: 'queue@example.com'
         },
         {
           title: 'Queued Pagination B',
@@ -431,7 +437,8 @@ describe('REST API (e2e)', () => {
           venue: 'Venue',
           year: new Date().getFullYear(),
           doi: '10.1000/paginate-b',
-          submittedBy: 'queue@example.com'
+          submittedBy: 'queue@example.com',
+          submitterEmail: 'queue@example.com'
         }
       ];
 
@@ -525,7 +532,8 @@ describe('REST API (e2e)', () => {
           venue: 'Venue',
           year: new Date().getFullYear(),
           doi: '10.1000/paginate-evidence-a',
-          submittedBy: 'queue@example.com'
+          submittedBy: 'queue@example.com',
+          submitterEmail: 'queue@example.com'
         })
         .expect(201);
       await request(server())

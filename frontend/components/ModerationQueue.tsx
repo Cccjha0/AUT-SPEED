@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 import { apiUrl } from '../lib/config';
 import { ErrorMessage } from './ErrorMessage';
 import { LoadingIndicator } from './LoadingIndicator';
@@ -15,6 +15,10 @@ export interface SubmissionItem {
   status: string;
   rejectionReason?: string;
   submittedBy?: string;
+  submitterEmail?: string;
+  peerReviewed?: boolean | null;
+  seRelated?: boolean | null;
+  decisionNotes?: string | null;
   createdAt?: string;
 }
 
@@ -29,6 +33,22 @@ export function ModerationQueue({ items, total, initialError }: ModerationQueueP
   const [error, setError] = useState<string | null>(initialError ?? null);
   const [message, setMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [decisions, setDecisions] = useState<Record<
+    string,
+    { peerReviewed?: boolean; seRelated?: boolean; decisionNotes?: string }
+  >>({});
+
+  useEffect(() => {
+    setDecisions(prev => {
+      const next = { ...prev };
+      queue.forEach(item => {
+        if (!next[item._id]) {
+          next[item._id] = {};
+        }
+      });
+      return next;
+    });
+  }, [queue]);
 
   const hasItems = queue.length > 0;
 
@@ -38,13 +58,29 @@ export function ModerationQueue({ items, total, initialError }: ModerationQueueP
       return;
     }
 
+    const decision = decisions[id] ?? {};
     let payload: Record<string, unknown> | undefined;
     if (action === 'reject') {
       const reason = window.prompt('Provide a rejection reason');
       if (!reason) {
         return;
       }
-      payload = { rejectionReason: reason };
+      payload = {
+        rejectionReason: reason,
+        peerReviewed: decision.peerReviewed,
+        seRelated: decision.seRelated,
+        decisionNotes: decision.decisionNotes
+      };
+    } else if (
+      decision.peerReviewed !== undefined ||
+      decision.seRelated !== undefined ||
+      (decision.decisionNotes && decision.decisionNotes.trim())
+    ) {
+      payload = {
+        peerReviewed: decision.peerReviewed,
+        seRelated: decision.seRelated,
+        decisionNotes: decision.decisionNotes
+      };
     }
 
     setError(null);
@@ -107,7 +143,51 @@ export function ModerationQueue({ items, total, initialError }: ModerationQueueP
                   DOI: <span>{item.doi}</span>
                 </p>
               ) : null}
-              {item.submittedBy ? <p className="text-muted">Submitted by: {item.submittedBy}</p> : null}
+              <p className="text-muted">
+                Submitted by: {item.submittedBy ?? 'Unknown'}
+                {item.submitterEmail ? ` (${item.submitterEmail})` : ''}
+              </p>
+              <div className="form-grid">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={decisions[item._id]?.peerReviewed ?? false}
+                    onChange={event =>
+                      setDecisions(prev => ({
+                        ...prev,
+                        [item._id]: { ...prev[item._id], peerReviewed: event.target.checked }
+                      }))
+                    }
+                  />
+                  &nbsp;Peer-reviewed venue
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={decisions[item._id]?.seRelated ?? false}
+                    onChange={event =>
+                      setDecisions(prev => ({
+                        ...prev,
+                        [item._id]: { ...prev[item._id], seRelated: event.target.checked }
+                      }))
+                    }
+                  />
+                  &nbsp;Relevant to SE practice
+                </label>
+                <label>
+                  Decision notes
+                  <textarea
+                    value={decisions[item._id]?.decisionNotes ?? ''}
+                    onChange={event =>
+                      setDecisions(prev => ({
+                        ...prev,
+                        [item._id]: { ...prev[item._id], decisionNotes: event.target.value }
+                      }))
+                    }
+                    rows={3}
+                  />
+                </label>
+              </div>
               <div className="inline-buttons">
                 <button type="button" onClick={() => handleAction(item._id, 'accept')} disabled={isPending}>
                   Accept

@@ -8,6 +8,8 @@ import { ErrorMessage } from './ErrorMessage';
 import { LoadingIndicator } from './LoadingIndicator';
 
 interface FormState {
+  submittedBy: string;
+  submitterEmail: string;
   title: string;
   authors: string;
   venue: string;
@@ -20,6 +22,8 @@ interface FormState {
 }
 
 const INITIAL_STATE: FormState = {
+  submittedBy: '',
+  submitterEmail: '',
   title: '',
   authors: '',
   venue: '',
@@ -32,6 +36,8 @@ const INITIAL_STATE: FormState = {
 };
 
 const SubmissionSchema = z.object({
+  submittedBy: z.string().min(1, 'Your name is required.'),
+  submitterEmail: z.string().email('Valid email is required.'),
   title: z.string().min(1, 'Title is required.'),
   authors: z.array(z.string().min(1, 'Author name is required.')).min(1, 'Please provide at least one author (comma separated).'),
   venue: z.string().min(1, 'Venue is required.'),
@@ -43,10 +49,7 @@ const SubmissionSchema = z.object({
   volume: z.string().min(1).optional(),
   number: z.string().min(1).optional(),
   pages: z.string().min(1).optional(),
-  doi: z
-    .string()
-    .min(1)
-    .optional()
+  doi: z.string().optional()
 });
 
 export function SubmitForm() {
@@ -55,9 +58,36 @@ export function SubmitForm() {
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [doiCheckResult, setDoiCheckResult] = useState<{
+    exists: boolean;
+    status?: string;
+    lastDecisionAt?: string;
+    decisionNotes?: string | null;
+    value: string;
+  } | null>(null);
+  const [doiChecking, setDoiChecking] = useState(false);
+  const [doiCheckError, setDoiCheckError] = useState<string | null>(null);
+  const [lastCheckedDoi, setLastCheckedDoi] = useState('');
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm(prev => ({ ...prev, [key]: value }));
+  }
+
+  function normalizeDoiInput(raw: string): { value?: string; error?: string } {
+    const trimmed = raw.trim();
+    if (!trimmed) {
+      return {};
+    }
+    const hasLinkPrefix =
+      /^https?:\/\//i.test(trimmed) ||
+      /^doi:/i.test(trimmed) ||
+      /doi\.org/i.test(trimmed);
+    if (hasLinkPrefix || !/^10\.\S+$/i.test(trimmed)) {
+      return {
+        error: 'DOI must be the identifier only (e.g. 10.1000/xyz123) without links.'
+      };
+    }
+    return { value: trimmed };
   }
 
   function applyBibtex(text: string) {
@@ -97,6 +127,83 @@ export function SubmitForm() {
     }
   }
 
+  async function performDoiCheck(value: string, silent = false) {
+    setDoiChecking(true);
+    try {
+      const response = await fetch(
+        apiUrl(`/api/submissions/check?doi=${encodeURIComponent(value)}`),
+        { cache: 'no-store' }
+      );
+      const json = await response.json();
+      if (!response.ok) {
+        throw new Error(json?.error?.message ?? 'Unable to check DOI');
+      }
+      const result = {
+        ...(json?.data ?? {}),
+        value
+      } as {
+        exists: boolean;
+        status?: string;
+        lastDecisionAt?: string;
+        decisionNotes?: string | null;
+        value: string;
+      };
+      setDoiCheckResult(result);
+      setLastCheckedDoi(value);
+      setDoiCheckError(null);
+      return result;
+    } catch (err) {
+      if (!silent) {
+        setDoiCheckError(
+          err instanceof Error ? err.message : 'Unable to check DOI right now.'
+        );
+      }
+      setDoiCheckResult(null);
+      throw err;
+    } finally {
+      setDoiChecking(false);
+    }
+  }
+
+  async function ensureDoiCheck(normalized: string) {
+    if (!normalized) {
+      setDoiCheckResult(null);
+      setLastCheckedDoi('');
+      return null;
+    }
+    if (normalized === lastCheckedDoi && doiCheckResult) {
+      return doiCheckResult;
+    }
+    try {
+      return await performDoiCheck(normalized, true);
+    } catch {
+      return null;
+    }
+  }
+
+  async function handleDoiBlur() {
+    const trimmed = form.doi.trim();
+    if (!trimmed) {
+      setDoiCheckResult(null);
+      setLastCheckedDoi('');
+      setDoiCheckError(null);
+      return;
+    }
+    const normalized = normalizeDoiInput(trimmed);
+    if (normalized.error) {
+      setDoiCheckError(normalized.error);
+      setDoiCheckResult(null);
+      return;
+    }
+    if (normalized.value) {
+      try {
+        await performDoiCheck(normalized.value, true);
+      } catch {
+        // background check failure can be ignored
+      }
+    }
+  }
+
   async function handleBibtexFile(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) {
@@ -118,6 +225,8 @@ export function SubmitForm() {
       .filter(Boolean);
 
     const payload = {
+      submittedBy: form.submittedBy.trim(),
+      submitterEmail: form.submitterEmail.trim(),
       title: form.title.trim(),
       authors,
       venue: form.venue.trim(),
@@ -136,6 +245,36 @@ export function SubmitForm() {
       return;
     }
 
+    let normalizedDoi: string | undefined;
+    if (validation.data.doi) {
+      const doiResult = normalizeDoiInput(validation.data.doi);
+      if (doiResult.error) {
+        setError(doiResult.error);
+        return;
+      }
+      normalizedDoi = doiResult.value;
+    }
+
+    try {
+      if (normalizedDoi) {
+        const check = await ensureDoiCheck(normalizedDoi);
+        if (check?.exists && check.status === 'accepted') {
+          setError('This DOI already exists in the SPEED database.');
+          return;
+        }
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Unable to verify DOI at this time.'
+      );
+      return;
+    }
+
+    const submissionDto = {
+      ...validation.data,
+      doi: normalizedDoi
+    };
+
     startTransition(async () => {
       try {
         const response = await fetch(apiUrl('/api/submissions'), {
@@ -143,7 +282,7 @@ export function SubmitForm() {
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify(validation.data)
+          body: JSON.stringify(submissionDto)
         });
 
         const result = await response.json().catch(() => ({ error: { message: 'Unknown error' } }));
@@ -154,10 +293,13 @@ export function SubmitForm() {
           return;
         }
 
-        setMessage('Submission queued successfully.');
-        setForm(INITIAL_STATE);
-      } catch (err) {
-        const messageFromError = err instanceof Error ? err.message : 'Submission failed';
+          setMessage('Submission queued successfully.');
+          setForm(INITIAL_STATE);
+          setDoiCheckResult(null);
+          setLastCheckedDoi('');
+          setDoiCheckError(null);
+        } catch (err) {
+          const messageFromError = err instanceof Error ? err.message : 'Submission failed';
         setError(messageFromError);
       }
     });
@@ -169,6 +311,40 @@ export function SubmitForm() {
       <p className="text-muted">
         Provide article details to queue a new submission for moderation.
       </p>
+      <div
+        style={{
+          backgroundColor: '#f8fafc',
+          border: '1px solid #d4d4d8',
+          borderRadius: '4px',
+          padding: '0.75rem'
+        }}
+      >
+        <p>
+          Do not upload PDF files or external links. Only provide the DOI identifier (e.g. <code>10.1000/xyz123</code>) and citation details.
+        </p>
+      </div>
+      <fieldset className="form-grid" style={{ border: '1px solid #d4d4d8', padding: '1rem', borderRadius: '4px' }}>
+        <legend>Your information</legend>
+        <label>
+          Your name
+          <input
+            name="submittedBy"
+            value={form.submittedBy}
+            onChange={event => update('submittedBy', event.target.value)}
+            required
+          />
+        </label>
+        <label>
+          Email (for notification)
+          <input
+            name="submitterEmail"
+            type="email"
+            value={form.submitterEmail}
+            onChange={event => update('submitterEmail', event.target.value)}
+            required
+          />
+        </label>
+      </fieldset>
       <label>
         Title
         <input
@@ -239,8 +415,21 @@ export function SubmitForm() {
           name="doi"
           value={form.doi}
           onChange={event => update('doi', event.target.value)}
+          onBlur={handleDoiBlur}
         />
-      </label>
+      </label>\r\n      {doiChecking ? <p className="text-muted">Checking DOI...</p> : null}
+      {doiCheckResult?.exists ? (
+        doiCheckResult.status === 'accepted' ? (
+          <p className="error-state">
+            This DOI already exists in the SPEED database and cannot be submitted again.
+          </p>
+        ) : (
+          <p className="text-muted">
+            Note: this DOI was previously rejected. Please include additional context before resubmitting.
+          </p>
+        )
+      ) : null}
+      {doiCheckError ? <p className="error-state">{doiCheckError}</p> : null}
 
       <fieldset className="form-grid" style={{ border: '1px solid #d4d4d8', padding: '1rem', borderRadius: '4px' }}>
         <legend>BibTeX Import (optional)</legend>
@@ -300,6 +489,9 @@ export function SubmitForm() {
             setForm(INITIAL_STATE);
             setError(null);
             setMessage(null);
+            setDoiCheckResult(null);
+            setLastCheckedDoi('');
+            setDoiCheckError(null);
           }}
           className="button-secondary"
           disabled={isPending}
@@ -310,4 +502,7 @@ export function SubmitForm() {
     </form>
   );
 }
+
+
+
 
