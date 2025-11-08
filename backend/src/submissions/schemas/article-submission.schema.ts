@@ -50,16 +50,16 @@ export class ArticleSubmission {
   @Prop({ required: true, trim: true, lowercase: true })
   submitterEmail!: string;
 
-  @Prop({ default: null })
+  @Prop({ type: Boolean, default: null })
   peerReviewed?: boolean | null;
 
-  @Prop({ default: null })
+  @Prop({ type: Boolean, default: null })
   seRelated?: boolean | null;
 
-  @Prop({ trim: true })
+  @Prop({ type: String, trim: true })
   decisionNotes?: string;
 
-  @Prop({ default: null })
+  @Prop({ type: Date, default: null })
   lastDecisionAt?: Date | null;
 
   @Prop({

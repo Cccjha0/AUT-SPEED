@@ -67,7 +67,8 @@ export async function createTestApp(): Promise<TestApp> {
       venue: 'Seed Venue',
       year: new Date().getFullYear(),
       doi,
-      submittedBy: 'seed@example.com'
+      submittedBy: 'Seed Seeder',
+      submitterEmail: 'seed@example.com'
     });
 
     await submissionsService.accept(submission._id.toString());
