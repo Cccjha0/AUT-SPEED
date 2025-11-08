@@ -1,10 +1,18 @@
 import Link from "next/link";
 import { getJSON } from "../../../lib/http";
-import type { EvidenceItem, SearchResponse } from "../../../lib/types";
+import type {
+  ClaimSummary,
+  EvidenceItem,
+  EvidenceMethodType,
+  EvidenceParticipantType,
+  PracticeSummary,
+  SearchResponse
+} from "../../../lib/types";
 import { PaginationControls } from "../../../components/PaginationControls";
 import { RatingButton } from "../../../components/RatingButton";
 import { ErrorMessage } from "../../../components/ErrorMessage";
 import { fromPageSize } from "../../../lib/url";
+import { SaveQueryControls } from "../../../components/SaveQueryControls";
 
 interface EvidencePageProps {
   searchParams?: Record<string, string | string[] | undefined>;
@@ -37,10 +45,15 @@ function buildQuery(params: Record<string, string | number | undefined>) {
   return query ? `?${query}` : '';
 }
 
+const methodOptions: EvidenceMethodType[] = ["experiment", "case-study", "survey", "meta-analysis", "other"];
+const participantOptions: EvidenceParticipantType[] = ["student", "practitioner", "mixed", "unknown"];
+
 export default async function EvidencePage({ searchParams }: EvidencePageProps) {
   const practiceKey = parseString(searchParams?.practiceKey);
   const claimKey = parseString(searchParams?.claimKey);
   const result = parseString(searchParams?.result);
+  const methodType = parseString(searchParams?.methodType);
+  const participantType = parseString(searchParams?.participantType);
   const from = parseNumber(searchParams?.from);
   const to = parseNumber(searchParams?.to);
   const { page, size, limit, skip } = fromPageSize({
@@ -54,6 +67,8 @@ export default async function EvidencePage({ searchParams }: EvidencePageProps) 
   let items: EvidenceItem[] = [];
   let total = 0;
   let resultCounts: Record<string, number> = {};
+  let practices: PracticeSummary[] = [];
+  let claims: ClaimSummary[] = [];
 
   try {
     const data = await getJSON<SearchResponse<EvidenceItem>["data"]>(
@@ -63,6 +78,8 @@ export default async function EvidencePage({ searchParams }: EvidencePageProps) 
         practiceKey,
         claimKey,
         result,
+        methodType,
+        participantType,
         from,
         to
       })}`,
@@ -81,6 +98,30 @@ export default async function EvidencePage({ searchParams }: EvidencePageProps) 
         : "Unable to load evidence";
   }
 
+  try {
+    const practiceData = await getJSON<SearchResponse<PracticeSummary>["data"]>(
+      "/api/search/practices?limit=100",
+      { next: { revalidate: 300 } }
+    );
+    practices = practiceData?.items ?? [];
+  } catch {
+    practices = [];
+  }
+
+  try {
+    const claimParams = new URLSearchParams({ limit: "100" });
+    if (practiceKey) {
+      claimParams.set("practiceKey", practiceKey);
+    }
+    const claimData = await getJSON<SearchResponse<ClaimSummary>["data"]>(
+      `/api/search/claims?${claimParams.toString()}`,
+      { next: { revalidate: 300 } }
+    );
+    claims = claimData?.items ?? [];
+  } catch {
+    claims = [];
+  }
+
   const backToPracticesHref = "/search/practices";
   const backToClaimsHref = practiceKey ? `/search/claims?practiceKey=${practiceKey}` : null;
   const resetParams = new URLSearchParams({
@@ -94,6 +135,28 @@ export default async function EvidencePage({ searchParams }: EvidencePageProps) 
     resetParams.set('claimKey', claimKey);
   }
   const resetHref = `/search/evidence?${resetParams.toString()}`;
+  const filtersForSave: Record<string, string | number> = {};
+  if (practiceKey) {
+    filtersForSave.practiceKey = practiceKey;
+  }
+  if (claimKey) {
+    filtersForSave.claimKey = claimKey;
+  }
+  if (result) {
+    filtersForSave.result = result;
+  }
+  if (methodType) {
+    filtersForSave.methodType = methodType;
+  }
+  if (participantType) {
+    filtersForSave.participantType = participantType;
+  }
+  if (typeof from === "number" && !Number.isNaN(from)) {
+    filtersForSave.from = from;
+  }
+  if (typeof to === "number" && !Number.isNaN(to)) {
+    filtersForSave.to = to;
+  }
 
   return (
     <div className="page">
@@ -114,12 +177,26 @@ export default async function EvidencePage({ searchParams }: EvidencePageProps) 
         </p>
         <form className="form-grid" method="get">
           <label>
-            Practice Key
-            <input name="practiceKey" defaultValue={practiceKey ?? ""} />
+            Practice
+            <select name="practiceKey" defaultValue={practiceKey ?? ""}>
+              <option value="">All practices</option>
+              {practices.map(practice => (
+                <option key={practice.key} value={practice.key}>
+                  {practice.name} ({practice.key})
+                </option>
+              ))}
+            </select>
           </label>
           <label>
-            Claim Key
-            <input name="claimKey" defaultValue={claimKey ?? ""} />
+            Claim
+            <select name="claimKey" defaultValue={claimKey ?? ""}>
+              <option value="">All claims</option>
+              {claims.map(claim => (
+                <option key={claim.key} value={claim.key}>
+                  {claim.text} ({claim.key})
+                </option>
+              ))}
+            </select>
           </label>
           <label>
             Result
@@ -128,6 +205,28 @@ export default async function EvidencePage({ searchParams }: EvidencePageProps) 
               <option value="agree">Agree</option>
               <option value="disagree">Disagree</option>
               <option value="mixed">Mixed</option>
+            </select>
+          </label>
+          <label>
+            Method
+            <select name="methodType" defaultValue={methodType ?? ""}>
+              <option value="">All methods</option>
+              {methodOptions.map(option => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Participant type
+            <select name="participantType" defaultValue={participantType ?? ""}>
+              <option value="">All participants</option>
+              {participantOptions.map(option => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
             </select>
           </label>
           <label>
@@ -146,7 +245,11 @@ export default async function EvidencePage({ searchParams }: EvidencePageProps) 
           <Link className="button-secondary" href={resetHref}>
             Reset Filters
           </Link>
+          <Link className="button-secondary" href="/search/saved">
+            View Saved Queries
+          </Link>
         </div>
+        <SaveQueryControls filters={filtersForSave} />
       </section>
 
       {resultCounts ? (

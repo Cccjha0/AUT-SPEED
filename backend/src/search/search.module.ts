@@ -11,6 +11,7 @@ import {
 import { UserRating, UserRatingSchema } from '../ratings/schemas/user-rating.schema';
 import { SearchController } from './search.controller';
 import { SearchService } from './search.service';
+import { SavedQuery, SavedQuerySchema } from './schemas/saved-query.schema';
 
 @Module({
   imports: [
@@ -19,7 +20,8 @@ import { SearchService } from './search.service';
       { name: Claim.name, schema: ClaimSchema },
       { name: ArticleEvidence.name, schema: ArticleEvidenceSchema },
       { name: ArticleSubmission.name, schema: ArticleSubmissionSchema },
-      { name: UserRating.name, schema: UserRatingSchema }
+      { name: UserRating.name, schema: UserRatingSchema },
+      { name: SavedQuery.name, schema: SavedQuerySchema }
     ])
   ],
   controllers: [SearchController],

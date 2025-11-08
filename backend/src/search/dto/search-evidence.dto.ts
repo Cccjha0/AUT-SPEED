@@ -6,7 +6,11 @@ import {
   Min,
   Max
 } from 'class-validator';
-import { EvidenceResult } from '../../evidence/schemas/article-evidence.schema';
+import {
+  EvidenceMethodType,
+  EvidenceParticipantType,
+  EvidenceResult
+} from '../../evidence/schemas/article-evidence.schema';
 
 const CURRENT_YEAR_LIMIT = new Date().getFullYear() + 1;
 
@@ -22,6 +26,14 @@ export class SearchEvidenceDto {
   @IsOptional()
   @IsEnum(EvidenceResult)
   result?: EvidenceResult;
+
+  @IsOptional()
+  @IsEnum(EvidenceMethodType)
+  methodType?: EvidenceMethodType;
+
+  @IsOptional()
+  @IsEnum(EvidenceParticipantType)
+  participantType?: EvidenceParticipantType;
 
   @IsOptional()
   @IsInt()
