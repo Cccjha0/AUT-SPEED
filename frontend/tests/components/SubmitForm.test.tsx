@@ -13,6 +13,8 @@ describe('SubmitForm', () => {
     const fetchSpy = vi.spyOn(global, 'fetch');
     render(<SubmitForm />);
 
+    await user.type(screen.getByLabelText(/Your name/i), 'Test User');
+    await user.type(screen.getByLabelText(/Email/i), 'user@example.com');
     await user.type(screen.getByLabelText(/Title/i), 'Test Article');
     await user.type(screen.getByLabelText(/Venue/i), 'Conference');
     await user.type(screen.getByLabelText(/Year/i), `${new Date().getFullYear()}`);
@@ -24,15 +26,24 @@ describe('SubmitForm', () => {
   });
 
   it('submits successfully and resets the form fields', async () => {
-    const fetchMock = vi
-      .spyOn(global, 'fetch')
-      .mockResolvedValue({
-        ok: true,
-        json: vi.fn().mockResolvedValue({ data: { _id: '1' } })
-      } as unknown as Response);
+    const fetchMock = vi.spyOn(global, 'fetch');
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ data: { exists: false } })
+    } as unknown as Response);
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ data: { exists: false } })
+    } as unknown as Response);
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ data: { _id: '1' } })
+    } as unknown as Response);
 
     render(<SubmitForm />);
 
+    await user.type(screen.getByLabelText(/Your name/i), 'Submitter');
+    await user.type(screen.getByLabelText(/Email/i), 'submitter@example.com');
     await user.type(screen.getByLabelText(/Title/i), 'Test Article');
     await user.type(screen.getByLabelText(/Authors/i), 'Alice, Bob');
     await user.type(screen.getByLabelText(/Venue/i), 'Conference');
@@ -44,8 +55,10 @@ describe('SubmitForm', () => {
 
     await user.click(screen.getByRole('button', { name: /submit/i }));
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
     expect(await screen.findByText(/Submission queued successfully/i)).toBeInTheDocument();
+    expect((screen.getByLabelText(/Your name/i) as HTMLInputElement).value).toBe('');
+    expect((screen.getByLabelText(/Email/i) as HTMLInputElement).value).toBe('');
     expect((screen.getByLabelText(/Title/i) as HTMLInputElement).value).toBe('');
     expect((screen.getByLabelText(/Authors/i) as HTMLInputElement).value).toBe('');
     expect((screen.getByLabelText(/Venue/i) as HTMLInputElement).value).toBe('');
@@ -59,6 +72,9 @@ describe('SubmitForm', () => {
 
   it('imports metadata from BibTeX input', async () => {
     render(<SubmitForm />);
+
+    await user.type(screen.getByLabelText(/Your name/i), 'Bib Author');
+    await user.type(screen.getByLabelText(/Email/i), 'bib@example.com');
 
     const bibtex = [
       '@article{demo,',
@@ -85,5 +101,24 @@ describe('SubmitForm', () => {
     expect((screen.getByLabelText(/Issue\/Number/i) as HTMLInputElement).value).toBe('2');
     expect((screen.getByLabelText(/Pages/i) as HTMLInputElement).value).toBe('15-30');
     expect((screen.getByLabelText(/DOI/i) as HTMLInputElement).value).toBe('10.1234/example');
+  });
+
+  it('shows an error when DOI includes an external URL', async () => {
+    const fetchSpy = vi.spyOn(global, 'fetch');
+    render(<SubmitForm />);
+
+    await user.type(screen.getByLabelText(/Your name/i), 'Link User');
+    await user.type(screen.getByLabelText(/Email/i), 'link@example.com');
+    await user.type(screen.getByLabelText(/Title/i), 'Bad DOI');
+    await user.type(screen.getByLabelText(/Authors/i), 'Alice');
+    await user.type(screen.getByLabelText(/Venue/i), 'Journal');
+    await user.type(screen.getByLabelText(/Year/i), `${new Date().getFullYear()}`);
+    await user.type(screen.getByLabelText(/DOI/i), 'https://doi.org/10.1000/test');
+
+    await user.click(screen.getByRole('button', { name: /submit/i }));
+
+    const errors = await screen.findAllByText(/DOI must be the identifier only/i);
+    expect(errors.length).toBeGreaterThanOrEqual(1);
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 });

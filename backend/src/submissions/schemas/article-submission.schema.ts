@@ -41,11 +41,26 @@ export class ArticleSubmission {
   @Prop({ trim: true })
   pages?: string;
 
-  @Prop({ unique: true, sparse: true, trim: true })
+  @Prop({ unique: true, sparse: true, trim: true, lowercase: true })
   doi?: string;
 
+  @Prop({ required: true, trim: true })
+  submittedBy!: string;
+
+  @Prop({ required: true, trim: true, lowercase: true })
+  submitterEmail!: string;
+
+  @Prop({ default: null })
+  peerReviewed?: boolean | null;
+
+  @Prop({ default: null })
+  seRelated?: boolean | null;
+
   @Prop({ trim: true })
-  submittedBy?: string;
+  decisionNotes?: string;
+
+  @Prop({ default: null })
+  lastDecisionAt?: Date | null;
 
   @Prop({
     required: true,
