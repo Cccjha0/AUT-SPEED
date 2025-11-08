@@ -72,3 +72,11 @@ export interface AnalysisQueueItem {
   submittedBy?: string;
   createdAt?: string;
 }
+
+export interface SavedQuery {
+  _id: string;
+  name: string;
+  owner: string;
+  query: Record<string, string | number>;
+  createdAt: string;
+}

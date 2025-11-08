@@ -5,7 +5,12 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import type { FilterQuery, Model, PipelineStage } from 'mongoose';
 import type { ArticleEvidenceDocument } from '../evidence/schemas/article-evidence.schema';
-import { ArticleEvidence, EvidenceResult } from '../evidence/schemas/article-evidence.schema';
+import {
+  ArticleEvidence,
+  EvidenceMethodType,
+  EvidenceParticipantType,
+  EvidenceResult
+} from '../evidence/schemas/article-evidence.schema';
 import type { PracticeDocument } from '../practices/schemas/practice.schema';
 import { Practice } from '../practices/schemas/practice.schema';
 import type { ClaimDocument } from '../claims/schemas/claim.schema';
@@ -21,8 +26,21 @@ import type { SearchPracticesDto } from './dto/search-practices.dto';
 import type { SearchClaimsDto } from './dto/search-claims.dto';
 import type { SearchEvidenceDto } from './dto/search-evidence.dto';
 import type { SearchRatingsDto } from './dto/search-ratings.dto';
+import {
+  SavedQuery,
+  SavedQueryDocument
+} from './schemas/saved-query.schema';
 
 type ResultCounts = Record<EvidenceResult, number>;
+export interface EvidenceFilterSnapshot {
+  practiceKey?: string;
+  claimKey?: string;
+  result?: EvidenceResult;
+  methodType?: EvidenceMethodType;
+  participantType?: EvidenceParticipantType;
+  from?: number;
+  to?: number;
+}
 
 @Injectable()
 export class SearchService {
@@ -36,7 +54,9 @@ export class SearchService {
     @InjectModel(ArticleSubmission.name)
     private readonly submissionModel: Model<ArticleSubmissionDocument>,
     @InjectModel(UserRating.name)
-    private readonly ratingModel: Model<UserRatingDocument>
+    private readonly ratingModel: Model<UserRatingDocument>,
+    @InjectModel(SavedQuery.name)
+    private readonly savedQueryModel: Model<SavedQueryDocument>
   ) {}
 
   async searchPractices(query: SearchPracticesDto) {
@@ -105,6 +125,8 @@ export class SearchService {
       practiceKey,
       claimKey,
       result,
+      methodType,
+      participantType,
       from,
       to,
       limit = 10,
@@ -127,6 +149,12 @@ export class SearchService {
     }
     if (result) {
       filter.result = result;
+    }
+    if (methodType) {
+      filter.methodType = methodType;
+    }
+    if (participantType) {
+      filter.participantType = participantType;
     }
 
     const doiFilter = await this.buildArticleDoiFilter(from, to);
@@ -233,6 +261,59 @@ export class SearchService {
       average: stats.average,
       count: stats.count
     };
+  }
+
+  async saveQuery(params: {
+    owner: string;
+    name: string;
+    query: EvidenceFilterSnapshot;
+  }) {
+    const doc = await this.savedQueryModel.create({
+      owner: params.owner,
+      name: params.name,
+      query: params.query
+    });
+    return doc.toObject();
+  }
+
+  async listSavedQueries(owner: string, limit = 50) {
+    const safeLimit = Math.min(Math.max(limit, 0), 100);
+    const items = await this.savedQueryModel
+      .find({ owner: owner.toLowerCase() })
+      .sort({ createdAt: -1 })
+      .limit(safeLimit)
+      .lean();
+    return {
+      items,
+      total: items.length,
+      limit: safeLimit
+    };
+  }
+
+  sanitizeFiltersForSave(filters: EvidenceFilterSnapshot) {
+    const sanitized: EvidenceFilterSnapshot = {};
+    if (filters.practiceKey) {
+      sanitized.practiceKey = filters.practiceKey;
+    }
+    if (filters.claimKey) {
+      sanitized.claimKey = filters.claimKey;
+    }
+    if (filters.result) {
+      sanitized.result = filters.result;
+    }
+    if (filters.methodType) {
+      sanitized.methodType = filters.methodType;
+    }
+    if (filters.participantType) {
+      sanitized.participantType = filters.participantType;
+    }
+    if (filters.from) {
+      sanitized.from = filters.from;
+    }
+    if (filters.to) {
+      sanitized.to = filters.to;
+    }
+    return sanitized;
   }
 
   private buildContainsRegex(text: string) {

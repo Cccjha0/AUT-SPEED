@@ -1,14 +1,20 @@
 
 import {
   BadRequestException,
+  Body,
   Controller,
   Get,
   HttpException,
   HttpStatus,
+  Post,
   Query
 } from '@nestjs/common';
-import { SearchService } from './search.service';
-import { EvidenceResult } from '../evidence/schemas/article-evidence.schema';
+import { SearchService, EvidenceFilterSnapshot } from './search.service';
+import {
+  EvidenceMethodType,
+  EvidenceParticipantType,
+  EvidenceResult
+} from '../evidence/schemas/article-evidence.schema';
 
 @Controller('search')
 export class SearchController {
@@ -80,6 +86,18 @@ export class SearchController {
         typeof query.result === 'string' && query.result
           ? this.parseEnum(query.result, EvidenceResult, 'result')
           : undefined;
+      const methodType =
+        typeof query.methodType === 'string' && query.methodType
+          ? this.parseEnum(query.methodType, EvidenceMethodType, 'methodType')
+          : undefined;
+      const participantType =
+        typeof query.participantType === 'string' && query.participantType
+          ? this.parseEnum(
+              query.participantType,
+              EvidenceParticipantType,
+              'participantType'
+            )
+          : undefined;
       const yearFrom = this.parseYear(query.from);
       const yearTo = this.parseYear(query.to);
 
@@ -91,12 +109,49 @@ export class SearchController {
         practiceKey,
         claimKey,
         result,
+        methodType,
+        participantType,
         from: yearFrom,
         to: yearTo,
         limit,
         skip
       });
       return this.wrapSuccess(data);
+    } catch (error) {
+      this.wrapAndThrowError(error);
+    }
+  }
+
+  @Get('saved')
+  async savedQueries(
+    @Query() query: Record<string, string | string[] | undefined>
+  ) {
+    try {
+      const owner =
+        typeof query.owner === 'string' ? query.owner.trim().toLowerCase() : '';
+      if (!owner) {
+        throw new BadRequestException('`owner` query parameter is required');
+      }
+      const limit = this.parsePositiveInt(query.limit, 50);
+      const data = await this.searchService.listSavedQueries(owner, limit);
+      return this.wrapSuccess(data);
+    } catch (error) {
+      this.wrapAndThrowError(error);
+    }
+  }
+
+  @Post('saved')
+  async saveQuery(@Body() body: Record<string, unknown>) {
+    try {
+      const owner = this.extractNonEmptyString(body.owner, 'owner').toLowerCase();
+      const name = this.extractNonEmptyString(body.name, 'name');
+      const filters = this.parseSavedFilters(body.query);
+      const saved = await this.searchService.saveQuery({
+        owner,
+        name,
+        query: filters
+      });
+      return this.wrapSuccess(saved);
     } catch (error) {
       this.wrapAndThrowError(error);
     }
@@ -186,6 +241,94 @@ export class SearchController {
       );
     }
     return Math.floor(value);
+  }
+
+  private extractNonEmptyString(value: unknown, field: string) {
+    if (typeof value !== 'string') {
+      throw new BadRequestException(`${field} is required`);
+    }
+    const trimmed = value.trim();
+    if (!trimmed) {
+      throw new BadRequestException(`${field} is required`);
+    }
+    return trimmed;
+  }
+
+  private parseSavedFilters(raw: unknown): EvidenceFilterSnapshot {
+    if (typeof raw !== 'object' || raw === null) {
+      throw new BadRequestException('query must be an object');
+    }
+    const source = raw as Record<string, unknown>;
+    const filters: EvidenceFilterSnapshot = {};
+    const practiceKey = this.optionalString(source.practiceKey);
+    const claimKey = this.optionalString(source.claimKey);
+    if (practiceKey) {
+      filters.practiceKey = practiceKey;
+    }
+    if (claimKey) {
+      filters.claimKey = claimKey;
+    }
+    if (typeof source.result === 'string' && source.result.trim()) {
+      filters.result = this.parseEnum(
+        source.result,
+        EvidenceResult,
+        'result'
+      );
+    }
+    if (typeof source.methodType === 'string' && source.methodType.trim()) {
+      filters.methodType = this.parseEnum(
+        source.methodType,
+        EvidenceMethodType,
+        'methodType'
+      );
+    }
+    if (
+      typeof source.participantType === 'string' &&
+      source.participantType.trim()
+    ) {
+      filters.participantType = this.parseEnum(
+        source.participantType,
+        EvidenceParticipantType,
+        'participantType'
+      );
+    }
+    const yearFrom = this.parseFlexibleYear(source.from);
+    const yearTo = this.parseFlexibleYear(source.to);
+    if (yearFrom !== undefined) {
+      filters.from = yearFrom;
+    }
+    if (yearTo !== undefined) {
+      filters.to = yearTo;
+    }
+
+    if (!Object.keys(filters).length) {
+      throw new BadRequestException('query must include at least one filter');
+    }
+
+    return this.searchService.sanitizeFiltersForSave(filters);
+  }
+
+  private optionalString(value: unknown) {
+    if (typeof value !== 'string') {
+      return undefined;
+    }
+    const trimmed = value.trim();
+    return trimmed || undefined;
+  }
+
+  private parseFlexibleYear(value: unknown) {
+    if (value === null || value === undefined || value === '') {
+      return undefined;
+    }
+    const numeric =
+      typeof value === 'number' ? value : Number(String(value));
+    const maxYear = new Date().getFullYear() + 1;
+    if (!Number.isFinite(numeric) || numeric < 1900 || numeric > maxYear) {
+      throw new BadRequestException(
+        `Year must be between 1900 and ${maxYear}`
+      );
+    }
+    return Math.floor(numeric);
   }
 }
 
