@@ -78,8 +78,12 @@ describe('EvidencePage (server component)', () => {
     await EvidencePage({ searchParams: { result: 'agree', page: '1', size: '10' } });
     await EvidencePage({ searchParams: { result: 'disagree', page: '1', size: '10' } });
 
-    expect(getJSONMock).toHaveBeenCalledTimes(2);
-    expect(getJSONMock.mock.calls[0]?.[0]).toContain('result=agree');
-    expect(getJSONMock.mock.calls[1]?.[0]).toContain('result=disagree');
+    const evidenceCalls = getJSONMock.mock.calls.filter(
+      ([url]) => typeof url === 'string' && url.includes('/api/search/evidence')
+    );
+
+    expect(evidenceCalls).toHaveLength(2);
+    expect(evidenceCalls[0]?.[0]).toContain('result=agree');
+    expect(evidenceCalls[1]?.[0]).toContain('result=disagree');
   });
 });
