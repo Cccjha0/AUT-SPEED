@@ -4,5 +4,10 @@ export const API_BASE = RAW_API_BASE.replace(/\/$/, '');
 
 export function apiUrl(path: string) {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+
+  if (typeof window !== 'undefined') {
+    return normalizedPath;
+  }
+
   return `${API_BASE}${normalizedPath}`;
 }
