@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SubmitForm } from '../../components/SubmitForm';
 
@@ -73,7 +73,8 @@ describe('SubmitForm', () => {
       '}'
     ].join('\n');
 
-    await user.type(screen.getByLabelText(/^BibTeX/i), `${bibtex}`);
+    const bibtexField = screen.getByLabelText(/^BibTeX/i) as HTMLTextAreaElement;
+    fireEvent.change(bibtexField, { target: { value: bibtex } });
     await user.click(screen.getByRole('button', { name: /Import from BibTeX/i }));
 
     expect((screen.getByLabelText(/Title/i) as HTMLInputElement).value).toBe('Sample Study');
