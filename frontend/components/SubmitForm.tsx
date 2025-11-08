@@ -316,10 +316,11 @@ export function SubmitForm() {
           backgroundColor: '#f8fafc',
           border: '1px solid #d4d4d8',
           borderRadius: '4px',
-          padding: '0.75rem'
+          padding: '0.75rem',
+          color: '#0f172a'
         }}
       >
-        <p>
+        <p style={{ margin: 0, fontSize: '0.95rem' }}>
           Do not upload PDF files or external links. Only provide the DOI identifier (e.g. <code>10.1000/xyz123</code>) and citation details.
         </p>
       </div>
@@ -417,7 +418,8 @@ export function SubmitForm() {
           onChange={event => update('doi', event.target.value)}
           onBlur={handleDoiBlur}
         />
-      </label>\r\n      {doiChecking ? <p className="text-muted">Checking DOI...</p> : null}
+      </label>
+      {doiChecking ? <p className="text-muted">Checking DOI...</p> : null}
       {doiCheckResult?.exists ? (
         doiCheckResult.status === 'accepted' ? (
           <p className="error-state">

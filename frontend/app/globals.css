@@ -110,6 +110,16 @@ label {
   font-size: 0.95rem;
 }
 
+.label-inline {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.label-inline input[type='checkbox'] {
+  width: auto;
+}
+
 .form-grid {
   display: grid;
   gap: 1rem;
