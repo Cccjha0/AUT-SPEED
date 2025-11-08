@@ -60,20 +60,20 @@ describe('SubmitForm', () => {
   it('imports metadata from BibTeX input', async () => {
     render(<SubmitForm />);
 
-    const bibtex = `
-      @article{demo,
-        title={Sample Study},
-        author={Alice Example and Bob Example},
-        journal={Journal of Testing},
-        year={2024},
-        volume={10},
-        number={2},
-        pages={15-30},
-        doi={10.1234/example}
-      }
-    `;
+    const bibtex = [
+      '@article{demo,',
+      'title={Sample Study},',
+      'author={Alice Example and Bob Example},',
+      'journal={Journal of Testing},',
+      'year={2024},',
+      'volume={10},',
+      'number={2},',
+      'pages={15-30},',
+      'doi={10.1234/example}',
+      '}'
+    ].join('\n');
 
-    await user.type(screen.getByLabelText(/^BibTeX/i), bibtex);
+    await user.type(screen.getByLabelText(/^BibTeX/i), `${bibtex}`);
     await user.click(screen.getByRole('button', { name: /Import from BibTeX/i }));
 
     expect((screen.getByLabelText(/Title/i) as HTMLInputElement).value).toBe('Sample Study');
