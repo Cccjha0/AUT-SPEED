@@ -151,33 +151,6 @@ export class SubmissionsService {
     }
   }
 
-  private ensureValidId(id: string) {
-    if (!Types.ObjectId.isValid(id)) {
-      throw new BadRequestException('Invalid submission id');
-    }
-  }
-
-  private handleMongooseError(error: unknown): never {
-    if (this.isDuplicateKeyError(error)) {
-      throw new BadRequestException('Submission with this DOI already exists');
-    }
-
-    if (error instanceof BadRequestException || error instanceof NotFoundException) {
-      throw error;
-    }
-
-    throw new BadRequestException('Unable to process submission');
-  }
-
-  private isDuplicateKeyError(error: unknown): boolean {
-    return (
-      typeof error === 'object' &&
-      error !== null &&
-      'code' in error &&
-      (error as { code?: number }).code === 11000
-    );
-  }
-}
   async checkByDoi(doi: string) {
     if (!doi) {
       return { exists: false };
@@ -192,7 +165,10 @@ export class SubmissionsService {
     return {
       exists: true,
       status: submission.status,
-      lastDecisionAt: submission.lastDecisionAt ?? submission.updatedAt ?? submission.createdAt,
+      lastDecisionAt:
+        submission.lastDecisionAt ??
+        submission.updatedAt ??
+        submission.createdAt,
       decisionNotes: submission.decisionNotes ?? null
     };
   }
@@ -233,3 +209,31 @@ export class SubmissionsService {
     ]);
     return { items, total, limit: safeLimit, skip: safeSkip };
   }
+
+  private ensureValidId(id: string) {
+    if (!Types.ObjectId.isValid(id)) {
+      throw new BadRequestException('Invalid submission id');
+    }
+  }
+
+  private handleMongooseError(error: unknown): never {
+    if (this.isDuplicateKeyError(error)) {
+      throw new BadRequestException('Submission with this DOI already exists');
+    }
+
+    if (error instanceof BadRequestException || error instanceof NotFoundException) {
+      throw error;
+    }
+
+    throw new BadRequestException('Unable to process submission');
+  }
+
+  private isDuplicateKeyError(error: unknown): boolean {
+    return (
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      (error as { code?: number }).code === 11000
+    );
+  }
+}
