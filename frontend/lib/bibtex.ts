@@ -53,7 +53,8 @@ export function parseBibtexEntry(input: string): ParsedBibtex {
       continue;
     }
 
-    result[mappedKey] = value.replace(/{|}/g, '').trim();
+    const cleanedValue = value.replace(/{|}/g, '').trim();
+    (result as Record<string, string | undefined>)[mappedKey] = cleanedValue;
   }
 
   return result;
