@@ -1,8 +1,9 @@
-\"use client\";
+"use client";
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { getJSON, patchJSON, postJSON } from '../lib/http';
 import type { AnalysisQueueItem, EvidenceResult, EvidenceMethodType, EvidenceParticipantType } from '../lib/types';
+import { ErrorMessage } from './ErrorMessage';
 
 interface AnalysisWorkspaceProps {
   initialQueue: AnalysisQueueItem[];
@@ -270,7 +271,7 @@ export function AnalysisWorkspace({ initialQueue }: AnalysisWorkspaceProps) {
               </div>
               <hr />
               {isLoadingPrefill ? (
-                <p className="text-muted">Loading metadata…</p>
+                <p className="text-muted">Loading metadata...</p>
               ) : prefillError ? (
                 <p className="error-state">{prefillError}</p>
               ) : (
@@ -387,3 +388,4 @@ export function AnalysisWorkspace({ initialQueue }: AnalysisWorkspaceProps) {
     </section>
   );
 }
+
