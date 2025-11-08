@@ -1,3 +1,4 @@
+
 import {
   BadRequestException,
   Body,
@@ -12,8 +13,8 @@ import {
 } from '@nestjs/common';
 import { SubmissionsService } from './submissions.service';
 import { SubmissionStatus } from './schemas/article-submission.schema';
-import { ModerationDecisionDto } from './dto/moderation-decision.dto';
 import { RejectSubmissionDto } from './dto/reject-submission.dto';
+import { ModerationDecisionDto } from './dto/moderation-decision.dto';
 
 const DOI_REGEX = /^10\.\S+$/i;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -119,7 +120,7 @@ export class SubmissionsController {
   }
 
   @Get('rejections')
-  async listRejections(
+  async rejections(
     @Query() query: Record<string, string | string[] | undefined>
   ) {
     try {
@@ -159,9 +160,10 @@ export class SubmissionsController {
       const skip = Number(query.skip ?? 0);
       const statusParam =
         typeof query.status === 'string' ? query.status : undefined;
-      const status = statusParam && Object.values(SubmissionStatus).includes(statusParam as SubmissionStatus)
-        ? (statusParam as SubmissionStatus)
-        : undefined;
+      const status =
+        statusParam && Object.values(SubmissionStatus).includes(statusParam as SubmissionStatus)
+          ? (statusParam as SubmissionStatus)
+          : undefined;
 
       const result = await this.submissionsService.findAll({
         status,
