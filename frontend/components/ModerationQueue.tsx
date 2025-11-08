@@ -156,7 +156,7 @@ export function ModerationQueue({ items, total, initialError }: ModerationQueueP
                 {item.submitterEmail ? ` (${item.submitterEmail})` : ''}
               </p>
               <div className="form-grid">
-                <label>
+                <label className="label-inline">
                   <input
                     type="checkbox"
                     checked={decisions[item._id]?.peerReviewed ?? false}
@@ -169,7 +169,7 @@ export function ModerationQueue({ items, total, initialError }: ModerationQueueP
                   />
                   &nbsp;Peer-reviewed venue
                 </label>
-                <label>
+                <label className="label-inline">
                   <input
                     type="checkbox"
                     checked={decisions[item._id]?.seRelated ?? false}
