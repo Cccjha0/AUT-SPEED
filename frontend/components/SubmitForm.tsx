@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useTransition } from 'react';
+import { useRef, useState, useTransition } from 'react';
 import { z } from 'zod';
 import { apiUrl } from '../lib/config';
+import { parseBibtexEntry } from '../lib/bibtex';
 import { ErrorMessage } from './ErrorMessage';
 import { LoadingIndicator } from './LoadingIndicator';
 
@@ -11,7 +12,11 @@ interface FormState {
   authors: string;
   venue: string;
   year: string;
+  volume: string;
+  number: string;
+  pages: string;
   doi: string;
+  bibtex: string;
 }
 
 const INITIAL_STATE: FormState = {
@@ -19,7 +24,11 @@ const INITIAL_STATE: FormState = {
   authors: '',
   venue: '',
   year: '',
-  doi: ''
+  volume: '',
+  number: '',
+  pages: '',
+  doi: '',
+  bibtex: ''
 };
 
 const SubmissionSchema = z.object({
@@ -31,6 +40,9 @@ const SubmissionSchema = z.object({
     .int()
     .min(1900, 'Year must be 1900 or later.')
     .max(new Date().getFullYear() + 1, 'Year is out of range.'),
+  volume: z.string().min(1).optional(),
+  number: z.string().min(1).optional(),
+  pages: z.string().min(1).optional(),
   doi: z
     .string()
     .min(1)
@@ -42,9 +54,61 @@ export function SubmitForm() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm(prev => ({ ...prev, [key]: value }));
+  }
+
+  function update<K extends keyof FormState>(key: K, value: FormState[K]) {
+    setForm(prev => ({ ...prev, [key]: value }));
+  }
+
+  function applyBibtex(text: string) {
+    try {
+      const parsed = parseBibtexEntry(text);
+      if (
+        !parsed.title &&
+        !parsed.authors?.length &&
+        !parsed.venue &&
+        !parsed.year &&
+        !parsed.volume &&
+        !parsed.number &&
+        !parsed.pages &&
+        !parsed.doi
+      ) {
+        throw new Error('Unable to detect fields in the provided BibTeX.');
+      }
+
+      setForm(prev => ({
+        ...prev,
+        title: parsed.title ?? prev.title,
+        authors:
+          parsed.authors && parsed.authors.length
+            ? parsed.authors.join(', ')
+            : prev.authors,
+        venue: parsed.venue ?? prev.venue,
+        year: parsed.year ? String(parsed.year) : prev.year,
+        volume: parsed.volume ?? prev.volume,
+        number: parsed.number ?? prev.number,
+        pages: parsed.pages ?? prev.pages,
+        doi: parsed.doi ?? prev.doi,
+        bibtex: text
+      }));
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to parse BibTeX');
+    }
+  }
+
+  async function handleBibtexFile(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+    const contents = await file.text();
+    applyBibtex(contents);
+    event.target.value = '';
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -62,6 +126,9 @@ export function SubmitForm() {
       authors,
       venue: form.venue.trim(),
       year: Number.parseInt(form.year, 10),
+      volume: form.volume.trim() || undefined,
+      number: form.number.trim() || undefined,
+      pages: form.pages.trim() || undefined,
       doi: form.doi.trim() || undefined
     };
 
@@ -147,6 +214,30 @@ export function SubmitForm() {
         />
       </label>
       <label>
+        Volume (optional)
+        <input
+          name="volume"
+          value={form.volume}
+          onChange={event => update('volume', event.target.value)}
+        />
+      </label>
+      <label>
+        Issue/Number (optional)
+        <input
+          name="number"
+          value={form.number}
+          onChange={event => update('number', event.target.value)}
+        />
+      </label>
+      <label>
+        Pages (optional)
+        <input
+          name="pages"
+          value={form.pages}
+          onChange={event => update('pages', event.target.value)}
+        />
+      </label>
+      <label>
         DOI (optional)
         <input
           name="doi"
@@ -154,6 +245,51 @@ export function SubmitForm() {
           onChange={event => update('doi', event.target.value)}
         />
       </label>
+
+      <fieldset className="form-grid" style={{ border: '1px solid #d4d4d8', padding: '1rem', borderRadius: '4px' }}>
+        <legend>BibTeX Import (optional)</legend>
+        <p className="text-muted">
+          Paste a single BibTeX entry or upload a .bib file to prefill the form. You can still edit any field manually.
+        </p>
+        <label>
+          BibTeX
+          <textarea
+            name="bibtex"
+            value={form.bibtex}
+            onChange={event => update('bibtex', event.target.value)}
+            rows={5}
+          />
+        </label>
+        <div className="inline-buttons">
+          <button
+            type="button"
+            className="button-secondary"
+            onClick={() => {
+              if (!form.bibtex.trim()) {
+                setError('Paste a BibTeX entry before importing.');
+                return;
+              }
+              applyBibtex(form.bibtex);
+            }}
+          >
+            Import from BibTeX
+          </button>
+          <button
+            type="button"
+            className="button-secondary"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            Upload .bib
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".bib,.txt"
+            onChange={handleBibtexFile}
+            style={{ display: 'none' }}
+          />
+        </div>
+      </fieldset>
 
       {error ? <ErrorMessage message={error} /> : null}
       {message ? <div className="success-state">{message}</div> : null}
