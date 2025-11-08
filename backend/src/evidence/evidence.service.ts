@@ -139,6 +139,24 @@ export class EvidenceService {
     }
   }
 
+  async prefillByDoi(doi: string) {
+    const submission = await this.submissionModel
+      .findOne({ doi: doi.trim().toLowerCase() })
+      .lean();
+    if (!submission) {
+      throw new NotFoundException('Submission not found');
+    }
+    return {
+      title: submission.title,
+      authors: submission.authors,
+      venue: submission.venue,
+      year: submission.year,
+      doi: submission.doi,
+      assignedAnalyst: submission.assignedAnalyst,
+      analysisStatus: submission.analysisStatus
+    };
+  }
+
   private async buildArticleDoiFilter(
     yearFrom?: number,
     yearTo?: number

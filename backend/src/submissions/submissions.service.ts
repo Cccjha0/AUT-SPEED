@@ -14,7 +14,8 @@ import type { ModerationDecisionDto } from './dto/moderation-decision.dto';
 import {
   ArticleSubmission,
   ArticleSubmissionDocument,
-  SubmissionStatus
+  SubmissionStatus,
+  AnalysisStatus
 } from './schemas/article-submission.schema';
 
 @Injectable()
@@ -33,7 +34,12 @@ export class SubmissionsService {
       throw new BadRequestException('Submission year out of range');
     }
     try {
-      const created = new this.submissionModel(instanceToPlain(dto));
+      const created = new this.submissionModel(
+        instanceToPlain({
+          ...dto,
+          analysisStatus: AnalysisStatus.None
+        })
+      );
       const saved = await created.save();
       return saved.toObject();
     } catch (error) {
@@ -96,6 +102,20 @@ export class SubmissionsService {
       if (decision.decisionNotes !== undefined) {
         update.decisionNotes = decision.decisionNotes;
       }
+      update.analysisStatus = AnalysisStatus.Todo;
+      update.assignedAnalyst = decision.decisionNotes
+        ? update.assignedAnalyst
+        : undefined;
+
+      if (decision.peerReviewed !== undefined) {
+        update.peerReviewed = decision.peerReviewed;
+      }
+      if (decision.seRelated !== undefined) {
+        update.seRelated = decision.seRelated;
+      }
+      if (decision.decisionNotes !== undefined) {
+        update.decisionNotes = decision.decisionNotes;
+      }
       const updated = await this.submissionModel
         .findByIdAndUpdate(
           id,
@@ -122,7 +142,13 @@ export class SubmissionsService {
       const update: Record<string, unknown> = {
         status: SubmissionStatus.Rejected,
         rejectionReason: dto.rejectionReason,
-        lastDecisionAt: new Date()
+        lastDecisionAt: new Date(),
+        analysisStatus: AnalysisStatus.None,
+        $unset: {
+          assignedAnalyst: '',
+          analysisStartedAt: '',
+          analysisCompletedAt: ''
+        }
       };
       if (dto.peerReviewed !== undefined) {
         update.peerReviewed = dto.peerReviewed;
@@ -149,6 +175,83 @@ export class SubmissionsService {
     } catch (error) {
       this.handleMongooseError(error);
     }
+  }
+
+  async listAnalysisQueue(query: {
+    status?: AnalysisStatus;
+    limit?: number;
+    skip?: number;
+  }) {
+    const { status = AnalysisStatus.Todo, limit = 20, skip = 0 } = query;
+    const safeLimit = Math.min(Math.max(limit, 0), 100);
+    const safeSkip = Math.max(skip, 0);
+    const filter: FilterQuery<ArticleSubmissionDocument> = {
+      analysisStatus:
+        status === AnalysisStatus.Todo
+          ? { $in: [AnalysisStatus.Todo, AnalysisStatus.InProgress] }
+          : status
+    };
+    const [items, total] = await Promise.all([
+      this.submissionModel
+        .find(filter)
+        .sort({ analysisStatus: 1, updatedAt: -1 })
+        .skip(safeSkip)
+        .limit(safeLimit)
+        .lean(),
+      this.submissionModel.countDocuments(filter)
+    ]);
+    return { items, total, limit: safeLimit, skip: safeSkip };
+  }
+
+  async assignAnalysis(doi: string, analystId: string) {
+    const submission = await this.submissionModel
+      .findOneAndUpdate(
+        { doi: doi.toLowerCase() },
+        {
+          assignedAnalyst: analystId.trim(),
+          analysisStatus: AnalysisStatus.Todo
+        },
+        { new: true }
+      )
+      .lean();
+    if (!submission) {
+      throw new NotFoundException('Submission not found');
+    }
+    return submission;
+  }
+
+  async startAnalysis(doi: string) {
+    const submission = await this.submissionModel
+      .findOneAndUpdate(
+        { doi: doi.toLowerCase() },
+        {
+          analysisStatus: AnalysisStatus.InProgress,
+          analysisStartedAt: new Date()
+        },
+        { new: true }
+      )
+      .lean();
+    if (!submission) {
+      throw new NotFoundException('Submission not found');
+    }
+    return submission;
+  }
+
+  async completeAnalysis(doi: string) {
+    const submission = await this.submissionModel
+      .findOneAndUpdate(
+        { doi: doi.toLowerCase() },
+        {
+          analysisStatus: AnalysisStatus.Done,
+          analysisCompletedAt: new Date()
+        },
+        { new: true }
+      )
+      .lean();
+    if (!submission) {
+      throw new NotFoundException('Submission not found');
+    }
+    return submission;
   }
 
   async checkByDoi(doi: string) {

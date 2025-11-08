@@ -9,6 +9,13 @@ export enum SubmissionStatus {
   Rejected = 'rejected'
 }
 
+export enum AnalysisStatus {
+  None = 'none',
+  Todo = 'todo',
+  InProgress = 'in_progress',
+  Done = 'done'
+}
+
 @Schema({
   collection: 'article_submissions',
   timestamps: true
@@ -63,6 +70,22 @@ export class ArticleSubmission {
   lastDecisionAt?: Date | null;
 
   @Prop({
+    enum: AnalysisStatus,
+    default: AnalysisStatus.None,
+    index: true
+  })
+  analysisStatus!: AnalysisStatus;
+
+  @Prop({ trim: true })
+  assignedAnalyst?: string;
+
+  @Prop({ type: Date, default: null })
+  analysisStartedAt?: Date | null;
+
+  @Prop({ type: Date, default: null })
+  analysisCompletedAt?: Date | null;
+
+  @Prop({
     required: true,
     enum: SubmissionStatus,
     default: SubmissionStatus.Queued
@@ -80,3 +103,4 @@ export class ArticleSubmission {
 export const ArticleSubmissionSchema = SchemaFactory.createForClass(ArticleSubmission);
 
 ArticleSubmissionSchema.index({ doi: 1 }, { unique: true, sparse: true });
+ArticleSubmissionSchema.index({ analysisStatus: 1 });

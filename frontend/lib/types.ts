@@ -56,3 +56,19 @@ export interface RatingsAverageResponse {
   average: number | null;
   count: number;
 }
+
+export type AnalysisStatus = 'none' | 'todo' | 'in_progress' | 'done';
+
+export interface AnalysisQueueItem {
+  _id: string;
+  title: string;
+  authors: string[];
+  venue?: string;
+  year?: number;
+  doi?: string;
+  analysisStatus: AnalysisStatus;
+  assignedAnalyst?: string;
+  submitterEmail?: string;
+  submittedBy?: string;
+  createdAt?: string;
+}

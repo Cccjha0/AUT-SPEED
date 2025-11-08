@@ -134,6 +134,28 @@ export class EvidenceController {
     }
   }
 
+  @Get('prefill')
+  async prefill(@Query('doi') doi?: string) {
+    return this.handlePrefillRequest(doi);
+  }
+
+  @Get('prefill/by-doi')
+  async prefillLegacy(@Query('doi') doi?: string) {
+    return this.handlePrefillRequest(doi);
+  }
+
+  private async handlePrefillRequest(doi?: string) {
+    try {
+      if (!doi || !doi.trim()) {
+        throw new BadRequestException('doi query parameter is required');
+      }
+      const data = await this.evidenceService.prefillByDoi(doi.trim());
+      return this.wrapSuccess(data);
+    } catch (error) {
+      this.wrapAndThrowError(error);
+    }
+  }
+
   private wrapSuccess<T>(data: T) {
     return { data, error: null };
   }

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from 'react';
@@ -33,17 +34,22 @@ export function ModerationQueue({ items, total, initialError }: ModerationQueueP
   const [error, setError] = useState<string | null>(initialError ?? null);
   const [message, setMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-  const [decisions, setDecisions] = useState<Record<
-    string,
-    { peerReviewed?: boolean; seRelated?: boolean; decisionNotes?: string }
-  >>({});
+  const [decisions, setDecisions] = useState<Record<string, {
+    peerReviewed?: boolean;
+    seRelated?: boolean;
+    decisionNotes?: string;
+  }>>({});
 
   useEffect(() => {
     setDecisions(prev => {
       const next = { ...prev };
       queue.forEach(item => {
         if (!next[item._id]) {
-          next[item._id] = {};
+          next[item._id] = {
+            peerReviewed: item.peerReviewed ?? undefined,
+            seRelated: item.seRelated ?? undefined,
+            decisionNotes: item.decisionNotes ?? ''
+          };
         }
       });
       return next;
@@ -94,7 +100,9 @@ export function ModerationQueue({ items, total, initialError }: ModerationQueueP
           body: payload ? JSON.stringify(payload) : undefined
         });
 
-        const result = await response.json().catch(() => ({ error: { message: 'Unknown error' } }));
+        const result = await response
+          .json()
+          .catch(() => ({ error: { message: 'Unknown error' } }));
 
         if (!response.ok) {
           const messageFromApi = result?.error?.message ?? `Failed to ${action} submission`;
@@ -208,5 +216,3 @@ export function ModerationQueue({ items, total, initialError }: ModerationQueueP
     </section>
   );
 }
-
-

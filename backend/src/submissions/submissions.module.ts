@@ -6,6 +6,7 @@ import {
   ArticleSubmission,
   ArticleSubmissionSchema
 } from './schemas/article-submission.schema';
+import { AnalysisController } from './analysis.controller';
 
 @Module({
   imports: [
@@ -13,7 +14,7 @@ import {
       { name: ArticleSubmission.name, schema: ArticleSubmissionSchema }
     ])
   ],
-  controllers: [SubmissionsController],
+  controllers: [SubmissionsController, AnalysisController],
   providers: [SubmissionsService],
   exports: [SubmissionsService]
 })
