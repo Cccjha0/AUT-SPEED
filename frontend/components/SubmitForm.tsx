@@ -52,6 +52,8 @@ const SubmissionSchema = z.object({
   doi: z.string().optional()
 });
 
+const FORBIDDEN_LINK_PATTERN = /(https?:\/\/|www\.)/i;
+
 export function SubmitForm() {
   const [form, setForm] = useState<FormState>(INITIAL_STATE);
   const [message, setMessage] = useState<string | null>(null);
@@ -90,8 +92,28 @@ export function SubmitForm() {
     return { value: trimmed };
   }
 
+  function containsExternalLink(value: string) {
+    return FORBIDDEN_LINK_PATTERN.test(value);
+  }
+
+  function ensureNoLinks(fields: Record<string, string | undefined>) {
+    for (const [key, value] of Object.entries(fields)) {
+      if (!value) {
+        continue;
+      }
+      if (containsExternalLink(value)) {
+        throw new Error(
+          `Remove external links from the ${key} field. Only DOI identifiers are allowed.`
+        );
+      }
+    }
+  }
+
   function applyBibtex(text: string) {
     try {
+      if (containsExternalLink(text)) {
+        throw new Error('BibTeX entries must not include URLs. Remove link fields before importing.');
+      }
       const parsed = parseBibtexEntry(text);
       if (
         !parsed.title &&
@@ -209,7 +231,23 @@ export function SubmitForm() {
     if (!file) {
       return;
     }
+    const extension = file.name.split('.').pop()?.toLowerCase();
+    if (!extension || (extension !== 'bib' && extension !== 'txt')) {
+      setError('Only .bib or .txt files are allowed. Do not upload PDFs or other files.');
+      event.target.value = '';
+      return;
+    }
+    if (file.type && file.type === 'application/pdf') {
+      setError('PDF uploads are not allowed. Provide citation details instead.');
+      event.target.value = '';
+      return;
+    }
     const contents = await file.text();
+    if (containsExternalLink(contents)) {
+      setError('Remove URLs from the BibTeX file before uploading. Only DOI identifiers are permitted.');
+      event.target.value = '';
+      return;
+    }
     applyBibtex(contents);
     event.target.value = '';
   }
@@ -275,6 +313,25 @@ export function SubmitForm() {
       doi: normalizedDoi
     };
 
+    try {
+      ensureNoLinks({
+        title: submissionDto.title,
+        authors: form.authors,
+        venue: submissionDto.venue,
+        volume: submissionDto.volume,
+        number: submissionDto.number,
+        pages: submissionDto.pages,
+        notes: form.bibtex
+      });
+    } catch (linkError) {
+      setError(
+        linkError instanceof Error
+          ? linkError.message
+          : 'External URLs are not allowed in submissions.'
+      );
+      return;
+    }
+
     startTransition(async () => {
       try {
         const response = await fetch(apiUrl('/api/submissions'), {
@@ -321,7 +378,7 @@ export function SubmitForm() {
         }}
       >
         <p style={{ margin: 0, fontSize: '0.95rem' }}>
-          Do not upload PDF files or external links. Only provide the DOI identifier (e.g. <code>10.1000/xyz123</code>) and citation details.
+          Do not upload PDF files or paste external URLs. Provide only citation details and the DOI identifier (e.g. <code>10.1000/xyz123</code>).
         </p>
       </div>
       <fieldset className="form-grid" style={{ border: '1px solid #d4d4d8', padding: '1rem', borderRadius: '4px' }}>
