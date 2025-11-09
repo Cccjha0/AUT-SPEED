@@ -6,13 +6,14 @@ import type {
   EvidenceMethodType,
   EvidenceParticipantType,
   PracticeSummary,
+  RatingsAverageResponse,
   SearchResponse
 } from "../../../lib/types";
 import { PaginationControls } from "../../../components/PaginationControls";
-import { RatingButton } from "../../../components/RatingButton";
 import { ErrorMessage } from "../../../components/ErrorMessage";
 import { fromPageSize } from "../../../lib/url";
 import { SaveQueryControls } from "../../../components/SaveQueryControls";
+import { EvidenceTable } from "../../../components/EvidenceTable";
 
 interface EvidencePageProps {
   searchParams?: Record<string, string | string[] | undefined>;
@@ -47,6 +48,53 @@ function buildQuery(params: Record<string, string | number | undefined>) {
 
 const methodOptions: EvidenceMethodType[] = ["experiment", "case-study", "survey", "meta-analysis", "other"];
 const participantOptions: EvidenceParticipantType[] = ["student", "practitioner", "mixed", "unknown"];
+const sortOptions = [
+  { value: "createdAt", label: "Newest first" },
+  { value: "year", label: "Publication year" },
+  { value: "author", label: "First author" },
+  { value: "avgRating", label: "Average rating" }
+];
+
+async function ensureRatings(items: EvidenceItem[]) {
+  const missing = items.filter(item => item.avgRating === undefined);
+  if (!missing.length) {
+    return items;
+  }
+  const dois = Array.from(
+    new Set(
+      missing
+        .map(item => (item.article?.doi ?? item.articleDoi)?.toLowerCase())
+        .filter((doi): doi is string => Boolean(doi))
+    )
+  );
+  const ratings = await Promise.all(
+    dois.map(async doi => {
+      try {
+        const stats = await getJSON<RatingsAverageResponse>(
+          `/api/ratings/avg?doi=${encodeURIComponent(doi)}`
+        );
+        return [doi, stats] as const;
+      } catch {
+        return [doi, { doi, average: null, count: 0 }] as const;
+      }
+    })
+  );
+  const ratingMap = new Map(ratings);
+  return items.map(item => {
+    if (item.avgRating !== undefined) {
+      return item;
+    }
+    const key = (item.article?.doi ?? item.articleDoi)?.toLowerCase();
+    const stats = key ? ratingMap.get(key) : undefined;
+    return {
+      ...item,
+      avgRating: {
+        average: stats?.average ?? null,
+        count: stats?.count ?? 0
+      }
+    };
+  });
+}
 
 export default async function EvidencePage({ searchParams }: EvidencePageProps) {
   const practiceKey = parseString(searchParams?.practiceKey);
@@ -54,6 +102,8 @@ export default async function EvidencePage({ searchParams }: EvidencePageProps) 
   const result = parseString(searchParams?.result);
   const methodType = parseString(searchParams?.methodType);
   const participantType = parseString(searchParams?.participantType);
+  const sortBy = parseString(searchParams?.sortBy) ?? "createdAt";
+  const sortDirection = parseString(searchParams?.sortDirection) ?? "desc";
   const from = parseNumber(searchParams?.from);
   const to = parseNumber(searchParams?.to);
   const { page, size, limit, skip } = fromPageSize({
@@ -80,6 +130,8 @@ export default async function EvidencePage({ searchParams }: EvidencePageProps) 
         result,
         methodType,
         participantType,
+        sortBy,
+        sortDirection,
         from,
         to
       })}`,
@@ -88,7 +140,7 @@ export default async function EvidencePage({ searchParams }: EvidencePageProps) 
       }
     );
 
-    items = data?.items ?? [];
+    items = await ensureRatings(data?.items ?? []);
     total = data?.total ?? 0;
     resultCounts = (data?.aggregations?.resultCounts ?? {}) as Record<string, number>;
   } catch (error) {
@@ -230,6 +282,23 @@ export default async function EvidencePage({ searchParams }: EvidencePageProps) 
             </select>
           </label>
           <label>
+            Sort by
+            <select name="sortBy" defaultValue={sortBy}>
+              {sortOptions.map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Direction
+            <select name="sortDirection" defaultValue={sortDirection}>
+              <option value="desc">Descending</option>
+              <option value="asc">Ascending</option>
+            </select>
+          </label>
+          <label>
             Year From
             <input type="number" name="from" defaultValue={!Number.isNaN(from) ? from : ""} />
           </label>
@@ -275,42 +344,8 @@ export default async function EvidencePage({ searchParams }: EvidencePageProps) 
       ) : null}
 
       {items.length ? (
-        <section className="card" style={{ overflowX: "auto" }}>
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th align="left">Title</th>
-                <th align="left">DOI</th>
-                <th align="left">Result</th>
-                <th align="left">Method</th>
-                <th align="left">Participants</th>
-                <th align="left">Year</th>
-                <th align="left">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map(item => {
-                const article = item.article ?? {
-                  title: undefined,
-                  year: undefined,
-                  doi: item.articleDoi
-                };
-                return (
-                  <tr key={item._id}>
-                    <td>{article.title ?? "Untitled"}</td>
-                    <td>{article.doi}</td>
-                    <td>{item.result}</td>
-                    <td>{item.methodType}</td>
-                    <td>{item.participantType ?? "unknown"}</td>
-                    <td>{article.year ?? "N/A"}</td>
-                    <td>
-                      <RatingButton doi={article.doi} />
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <section className="card">
+          <EvidenceTable items={items} />
         </section>
       ) : null}
 

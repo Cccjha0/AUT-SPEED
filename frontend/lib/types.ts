@@ -31,6 +31,11 @@ export type EvidenceMethodType =
   | 'other';
 export type EvidenceParticipantType = 'student' | 'practitioner' | 'mixed' | 'unknown';
 
+export interface AvgRatingSummary {
+  average: number | null;
+  count: number;
+}
+
 export interface EvidenceItem {
   _id: string;
   articleDoi: string;
@@ -42,6 +47,7 @@ export interface EvidenceItem {
   analyst?: string;
   notes?: string;
   createdAt?: string;
+  avgRating?: AvgRatingSummary;
   article?: {
     title?: string;
     venue?: string;

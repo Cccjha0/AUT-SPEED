@@ -15,6 +15,10 @@ import {
   EvidenceParticipantType,
   EvidenceResult
 } from '../evidence/schemas/article-evidence.schema';
+import {
+  EvidenceSortField,
+  SortDirection
+} from './dto/search-evidence.dto';
 
 @Controller('search')
 export class SearchController {
@@ -100,6 +104,14 @@ export class SearchController {
           : undefined;
       const yearFrom = this.parseYear(query.from);
       const yearTo = this.parseYear(query.to);
+      const sortBy =
+        typeof query.sortBy === 'string' && query.sortBy
+          ? this.parseEnum(query.sortBy, EvidenceSortField, 'sortBy')
+          : EvidenceSortField.CreatedAt;
+      const sortDirection =
+        typeof query.sortDirection === 'string' && query.sortDirection
+          ? this.parseEnum(query.sortDirection, SortDirection, 'sortDirection')
+          : SortDirection.Desc;
 
       if (yearFrom !== undefined && yearTo !== undefined && yearFrom > yearTo) {
         throw new BadRequestException('`from` year cannot exceed `to` year');
@@ -113,6 +125,8 @@ export class SearchController {
         participantType,
         from: yearFrom,
         to: yearTo,
+        sortBy,
+        sortDirection,
         limit,
         skip
       });

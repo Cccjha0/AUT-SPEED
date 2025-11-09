@@ -25,6 +25,7 @@ import { UserRating } from '../ratings/schemas/user-rating.schema';
 import type { SearchPracticesDto } from './dto/search-practices.dto';
 import type { SearchClaimsDto } from './dto/search-claims.dto';
 import type { SearchEvidenceDto } from './dto/search-evidence.dto';
+import { EvidenceSortField } from './dto/search-evidence.dto';
 import type { SearchRatingsDto } from './dto/search-ratings.dto';
 import {
   SavedQuery,
@@ -129,6 +130,8 @@ export class SearchService {
       participantType,
       from,
       to,
+      sortBy = 'createdAt',
+      sortDirection = 'desc',
       limit = 10,
       skip = 0
     } = query;
@@ -176,9 +179,6 @@ export class SearchService {
 
     const pipeline: PipelineStage[] = [
       { $match: filter },
-      { $sort: { createdAt: -1 } },
-      { $skip: safeSkip },
-      { $limit: safeLimit },
       {
         $lookup: {
           from: this.submissionModel.collection.name,
@@ -193,6 +193,42 @@ export class SearchService {
         }
       },
       {
+        $lookup: {
+          from: this.ratingModel.collection.name,
+          let: { doi: '$articleDoi' },
+          pipeline: [
+            {
+              $match: {
+                $expr: { $eq: ['$articleDoi', '$$doi'] }
+              }
+            },
+            {
+              $group: {
+                _id: '$articleDoi',
+                average: { $avg: '$stars' },
+                count: { $sum: 1 }
+              }
+            }
+          ],
+          as: 'ratingStats'
+        }
+      },
+      {
+        $addFields: {
+          avgRating: {
+            $let: {
+              vars: {
+                stat: { $arrayElemAt: ['$ratingStats', 0] }
+              },
+              in: {
+                average: '$$stat.average',
+                count: '$$stat.count'
+              }
+            }
+          }
+        }
+      },
+      {
         $project: {
           _id: 1,
           articleDoi: 1,
@@ -204,6 +240,10 @@ export class SearchService {
           analyst: 1,
           notes: 1,
           createdAt: 1,
+          avgRating: {
+            average: { $ifNull: ['$avgRating.average', null] },
+            count: { $ifNull: ['$avgRating.count', 0] }
+          },
           article: {
             title: '$submission.title',
             venue: '$submission.venue',
@@ -212,7 +252,10 @@ export class SearchService {
             doi: '$articleDoi'
           }
         }
-      }
+      },
+      { $sort: this.buildEvidenceSortStage(sortBy, sortDirection) },
+      { $skip: safeSkip },
+      { $limit: safeLimit }
     ];
 
     const [items, total, resultAggregation] = await Promise.all([
@@ -351,6 +394,24 @@ export class SearchService {
     return counts;
   }
 
+  private buildEvidenceSortStage(
+    sortBy: string,
+    direction: string
+  ): Record<string, 1 | -1> {
+    const dir: 1 | -1 = direction === 'asc' ? 1 : -1;
+    const fallback: 1 | -1 = -1;
+    switch (sortBy) {
+      case EvidenceSortField.Year:
+        return { 'article.year': dir, createdAt: fallback };
+      case EvidenceSortField.Author:
+        return { 'article.authors.0': dir, createdAt: fallback };
+      case EvidenceSortField.AvgRating:
+        return { 'avgRating.average': dir, createdAt: fallback };
+      default:
+        return { createdAt: dir };
+    }
+  }
+
   private async buildArticleDoiFilter(
     yearFrom?: number,
     yearTo?: number
@@ -387,4 +448,5 @@ export class SearchService {
     return dois as string[];
   }
 }
+
 
