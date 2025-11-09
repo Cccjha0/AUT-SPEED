@@ -14,6 +14,18 @@ import {
 
 const CURRENT_YEAR_LIMIT = new Date().getFullYear() + 1;
 
+export enum EvidenceSortField {
+  CreatedAt = 'createdAt',
+  Year = 'year',
+  Author = 'author',
+  AvgRating = 'avgRating'
+}
+
+export enum SortDirection {
+  Asc = 'asc',
+  Desc = 'desc'
+}
+
 export class SearchEvidenceDto {
   @IsOptional()
   @IsString()
@@ -56,4 +68,12 @@ export class SearchEvidenceDto {
   @IsInt()
   @Min(0)
   skip?: number;
+
+  @IsOptional()
+  @IsEnum(EvidenceSortField)
+  sortBy?: EvidenceSortField;
+
+  @IsOptional()
+  @IsEnum(SortDirection)
+  sortDirection?: SortDirection;
 }
