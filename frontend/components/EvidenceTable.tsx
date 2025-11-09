@@ -10,6 +10,8 @@ const LOCKED_COLUMNS = new Set(["title", "actions"]);
 
 type ColumnId =
   | "title"
+  | "practice"
+  | "claim"
   | "doi"
   | "result"
   | "method"
@@ -24,11 +26,27 @@ interface ColumnDefinition {
   render: (item: EvidenceItem) => ReactNode;
 }
 
+interface EvidenceTableProps {
+  items: EvidenceItem[];
+  practiceNames: Record<string, string>;
+  claimSummaries: Record<string, string>;
+}
+
 const COLUMN_DEFINITIONS: ColumnDefinition[] = [
   {
     id: "title",
     label: "Title",
     render: item => item.article?.title ?? "Untitled"
+  },
+  {
+    id: "practice",
+    label: "Practice",
+    render: item => item.practiceKey
+  },
+  {
+    id: "claim",
+    label: "Claim",
+    render: item => item.claimKey
   },
   {
     id: "doi",
@@ -81,11 +99,7 @@ const COLUMN_DEFINITIONS: ColumnDefinition[] = [
 
 const DEFAULT_VISIBLE = COLUMN_DEFINITIONS.map(column => column.id);
 
-interface EvidenceTableProps {
-  items: EvidenceItem[];
-}
-
-export function EvidenceTable({ items }: EvidenceTableProps) {
+export function EvidenceTable({ items, practiceNames, claimSummaries }: EvidenceTableProps) {
   const [visibleColumns, setVisibleColumns] = useState<ColumnId[]>(DEFAULT_VISIBLE);
 
   useEffect(() => {
@@ -168,7 +182,7 @@ export function EvidenceTable({ items }: EvidenceTableProps) {
             {items.map(item => (
               <tr key={item._id}>
                 {effectiveColumns.map(column => (
-                  <td key={column.id}>{column.render(item)}</td>
+                  <td key={column.id}>{renderCell(column.id, column.render, item, practiceNames, claimSummaries)}</td>
                 ))}
               </tr>
             ))}
@@ -177,4 +191,20 @@ export function EvidenceTable({ items }: EvidenceTableProps) {
       </div>
     </div>
   );
+}
+
+function renderCell(
+  columnId: ColumnId,
+  fallbackRender: (item: EvidenceItem) => ReactNode,
+  item: EvidenceItem,
+  practiceNames: Record<string, string>,
+  claimSummaries: Record<string, string>
+) {
+  if (columnId === "practice") {
+    return practiceNames[item.practiceKey] ?? item.practiceKey ?? "—";
+  }
+  if (columnId === "claim") {
+    return claimSummaries[item.claimKey] ?? item.claimKey ?? "—";
+  }
+  return fallbackRender(item);
 }

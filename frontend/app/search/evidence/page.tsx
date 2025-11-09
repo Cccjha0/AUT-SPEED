@@ -52,7 +52,12 @@ const sortOptions = [
   { value: "createdAt", label: "Newest first" },
   { value: "year", label: "Publication year" },
   { value: "author", label: "First author" },
-  { value: "avgRating", label: "Average rating" }
+  { value: "avgRating", label: "Average rating" },
+  { value: "practiceKey", label: "Practice key" },
+  { value: "claimKey", label: "Claim key" },
+  { value: "result", label: "Evidence result" },
+  { value: "methodType", label: "Method type" },
+  { value: "participantType", label: "Participant type" }
 ];
 
 async function ensureRatings(items: EvidenceItem[]) {
@@ -173,6 +178,13 @@ export default async function EvidencePage({ searchParams }: EvidencePageProps) 
   } catch {
     claims = [];
   }
+
+  const practiceMap: Record<string, string> = Object.fromEntries(
+    practices.map(practice => [practice.key, practice.name])
+  );
+  const claimMap: Record<string, string> = Object.fromEntries(
+    claims.map(claim => [claim.key, claim.text])
+  );
 
   const backToPracticesHref = "/search/practices";
   const backToClaimsHref = practiceKey ? `/search/claims?practiceKey=${practiceKey}` : null;
@@ -345,7 +357,7 @@ export default async function EvidencePage({ searchParams }: EvidencePageProps) 
 
       {items.length ? (
         <section className="card">
-          <EvidenceTable items={items} />
+          <EvidenceTable items={items} practiceNames={practiceMap} claimSummaries={claimMap} />
         </section>
       ) : null}
 
