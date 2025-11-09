@@ -407,6 +407,16 @@ export class SearchService {
         return { 'article.authors.0': dir, createdAt: fallback };
       case EvidenceSortField.AvgRating:
         return { 'avgRating.average': dir, createdAt: fallback };
+      case EvidenceSortField.Practice:
+        return { practiceKey: dir, createdAt: fallback };
+      case EvidenceSortField.Claim:
+        return { claimKey: dir, createdAt: fallback };
+      case EvidenceSortField.Result:
+        return { result: dir, createdAt: fallback };
+      case EvidenceSortField.Method:
+        return { methodType: dir, createdAt: fallback };
+      case EvidenceSortField.Participant:
+        return { participantType: dir, createdAt: fallback };
       default:
         return { createdAt: dir };
     }

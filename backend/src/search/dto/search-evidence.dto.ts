@@ -18,7 +18,12 @@ export enum EvidenceSortField {
   CreatedAt = 'createdAt',
   Year = 'year',
   Author = 'author',
-  AvgRating = 'avgRating'
+  AvgRating = 'avgRating',
+  Practice = 'practiceKey',
+  Claim = 'claimKey',
+  Result = 'result',
+  Method = 'methodType',
+  Participant = 'participantType'
 }
 
 export enum SortDirection {
