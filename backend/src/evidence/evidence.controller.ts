@@ -15,12 +15,17 @@ import {
   EvidenceParticipantType,
   EvidenceResult
 } from './schemas/article-evidence.schema';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { UseGuards } from '@nestjs/common';
 
 @Controller('evidence')
 export class EvidenceController {
   constructor(private readonly evidenceService: EvidenceService) {}
 
   @Post()
+  @UseGuards(RolesGuard)
+  @Roles('analyst')
   async create(@Body() payload: Record<string, unknown>) {
     try {
       const articleDoi =

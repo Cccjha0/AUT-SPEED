@@ -19,6 +19,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <Link href="/moderation">Moderation</Link>
             <Link href="/analysis">Analysis</Link>
             <Link href="/search/practices">Search</Link>
+            <Link href="/admin">Admin</Link>
+            <Link href="/login">Sign in</Link>
           </nav>
         </header>
         <main className="site-main">{children}</main>

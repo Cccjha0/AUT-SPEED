@@ -13,7 +13,7 @@ describe('getJSON', () => {
 
     const result = await getJSON<{ message: string }>('/api/example');
 
-    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/api/example'), undefined);
+    expect(fetchMock).toHaveBeenCalledWith('/api/example', {});
     expect(result).toEqual({ message: 'ok' });
   });
 

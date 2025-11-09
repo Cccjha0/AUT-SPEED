@@ -9,6 +9,7 @@ import {
   ArticleSubmissionSchema
 } from '../submissions/schemas/article-submission.schema';
 import { ArticleEvidence, ArticleEvidenceSchema } from './schemas/article-evidence.schema';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
   imports: [
@@ -17,7 +18,8 @@ import { ArticleEvidence, ArticleEvidenceSchema } from './schemas/article-eviden
       { name: ArticleSubmission.name, schema: ArticleSubmissionSchema },
       { name: Practice.name, schema: PracticeSchema },
       { name: Claim.name, schema: ClaimSchema }
-    ])
+    ]),
+    AuthModule
   ],
   controllers: [EvidenceController],
   providers: [EvidenceService],
