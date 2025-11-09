@@ -1,8 +1,9 @@
 
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { apiUrl } from '../lib/config';
+import { getJSON } from '../lib/http';
 import { ErrorMessage } from './ErrorMessage';
 import { LoadingIndicator } from './LoadingIndicator';
 
@@ -23,6 +24,19 @@ export interface SubmissionItem {
   createdAt?: string;
 }
 
+interface SubmissionHistory {
+  exists: boolean;
+  status?: string;
+  lastDecisionAt?: string;
+  decisionNotes?: string | null;
+}
+
+interface HistoryEntry {
+  loading: boolean;
+  info?: SubmissionHistory;
+  error?: string;
+}
+
 interface ModerationQueueProps {
   items: SubmissionItem[];
   total: number;
@@ -39,6 +53,8 @@ export function ModerationQueue({ items, total, initialError }: ModerationQueueP
     seRelated?: boolean;
     decisionNotes?: string;
   }>>({});
+  const [history, setHistory] = useState<Record<string, HistoryEntry>>({});
+  const fetchedHistory = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     setDecisions(prev => {
@@ -56,7 +72,37 @@ export function ModerationQueue({ items, total, initialError }: ModerationQueueP
     });
   }, [queue]);
 
+  useEffect(() => {
+    queue.forEach(item => {
+      const doi = item.doi?.trim().toLowerCase();
+      if (!doi || fetchedHistory.current.has(doi)) {
+        return;
+      }
+      fetchedHistory.current.add(doi);
+      setHistory(prev => ({ ...prev, [doi]: { loading: true } }));
+      void getJSON<SubmissionHistory>(`/api/submissions/check?doi=${encodeURIComponent(doi)}`)
+        .then(info => {
+          setHistory(prev => ({ ...prev, [doi]: { loading: false, info } }));
+        })
+        .catch(() => {
+          setHistory(prev => ({
+            ...prev,
+            [doi]: { loading: false, error: 'Unable to fetch prior submission history.' }
+          }));
+        });
+    });
+  }, [queue]);
+
   const hasItems = queue.length > 0;
+  const ensureDecisionValue = (id: string, field: 'peerReviewed' | 'seRelated', value: boolean) => {
+    setDecisions(prev => ({
+      ...prev,
+      [id]: {
+        ...prev[id],
+        [field]: value
+      }
+    }));
+  };
 
   function handleAction(id: string, action: 'accept' | 'reject') {
     const submission = queue.find(item => item._id === id);
@@ -77,6 +123,12 @@ export function ModerationQueue({ items, total, initialError }: ModerationQueueP
         seRelated: decision.seRelated,
         decisionNotes: decision.decisionNotes
       };
+    } else if (
+      action === 'accept' &&
+      (typeof decision.peerReviewed !== 'boolean' || typeof decision.seRelated !== 'boolean')
+    ) {
+      setError('Mark peer-review status and SE relevance before accepting.');
+      return;
     } else if (
       decision.peerReviewed !== undefined ||
       decision.seRelated !== undefined ||
@@ -155,33 +207,68 @@ export function ModerationQueue({ items, total, initialError }: ModerationQueueP
                 Submitted by: {item.submittedBy ?? 'Unknown'}
                 {item.submitterEmail ? ` (${item.submitterEmail})` : ''}
               </p>
+              {renderHistoryCallout(item.doi, history)}
               <div className="form-grid">
-                <label className="label-inline">
-                  <input
-                    type="checkbox"
-                    checked={decisions[item._id]?.peerReviewed ?? false}
-                    onChange={event =>
-                      setDecisions(prev => ({
-                        ...prev,
-                        [item._id]: { ...prev[item._id], peerReviewed: event.target.checked }
-                      }))
-                    }
-                  />
-                  &nbsp;Peer-reviewed venue
-                </label>
-                <label className="label-inline">
-                  <input
-                    type="checkbox"
-                    checked={decisions[item._id]?.seRelated ?? false}
-                    onChange={event =>
-                      setDecisions(prev => ({
-                        ...prev,
-                        [item._id]: { ...prev[item._id], seRelated: event.target.checked }
-                      }))
-                    }
-                  />
-                  &nbsp;Relevant to SE practice
-                </label>
+                <fieldset className="field-group">
+                  <legend>
+                    Peer-reviewed venue?
+                    {typeof decisions[item._id]?.peerReviewed !== 'boolean' ? (
+                      <span className="text-muted" style={{ marginLeft: '0.5rem', fontSize: '0.85rem' }}>
+                        Select Yes or No
+                      </span>
+                    ) : null}
+                  </legend>
+                  <div className="inline-radio">
+                    <label className="label-inline">
+                      <input
+                        type="radio"
+                        name={`peer-reviewed-${item._id}`}
+                        checked={decisions[item._id]?.peerReviewed === true}
+                        onChange={() => ensureDecisionValue(item._id, 'peerReviewed', true)}
+                      />
+                      Yes
+                    </label>
+                    <label className="label-inline">
+                      <input
+                        type="radio"
+                        name={`peer-reviewed-${item._id}`}
+                        checked={decisions[item._id]?.peerReviewed === false}
+                        onChange={() => ensureDecisionValue(item._id, 'peerReviewed', false)}
+                      />
+                      No
+                    </label>
+                  </div>
+                </fieldset>
+                <fieldset className="field-group">
+                  <legend>
+                    Relevant to SE practice?
+                    {typeof decisions[item._id]?.seRelated !== 'boolean' ? (
+                      <span className="text-muted" style={{ marginLeft: '0.5rem', fontSize: '0.85rem' }}>
+                        Select Yes or No
+                      </span>
+                    ) : null}
+                  </legend>
+                  <div className="inline-radio">
+                    <label className="label-inline">
+                      <input
+                        type="radio"
+                        name={`se-related-${item._id}`}
+                        checked={decisions[item._id]?.seRelated === true}
+                        onChange={() => ensureDecisionValue(item._id, 'seRelated', true)}
+                      />
+                      Yes
+                    </label>
+                    <label className="label-inline">
+                      <input
+                        type="radio"
+                        name={`se-related-${item._id}`}
+                        checked={decisions[item._id]?.seRelated === false}
+                        onChange={() => ensureDecisionValue(item._id, 'seRelated', false)}
+                      />
+                      No
+                    </label>
+                  </div>
+                </fieldset>
                 <label>
                   Decision notes
                   <textarea
@@ -214,5 +301,43 @@ export function ModerationQueue({ items, total, initialError }: ModerationQueueP
         </div>
       ) : null}
     </section>
+  );
+}
+
+function renderHistoryCallout(
+  doi: string | undefined,
+  history: Record<string, HistoryEntry>
+) {
+  if (!doi) {
+    return (
+      <div className="history-callout warning-state">
+        DOI missing; perform manual duplicate checks before deciding.
+      </div>
+    );
+  }
+  const key = doi.trim().toLowerCase();
+  const entry = history[key];
+  if (!entry || entry.loading) {
+    return <div className="history-callout text-muted">Checking existing submissions…</div>;
+  }
+  if (entry.error) {
+    return <div className="history-callout warning-state">{entry.error}</div>;
+  }
+  if (!entry.info?.exists) {
+    return <div className="history-callout success-state">No prior submissions with this DOI.</div>;
+  }
+  const status = entry.info.status ?? 'unknown';
+  const note =
+    status === 'accepted'
+      ? 'This article is already accepted in SPEED.'
+      : status === 'rejected'
+        ? 'This article was previously rejected.'
+        : `Existing record detected (status: ${status}).`;
+  return (
+    <div className="history-callout warning-state">
+      {note}
+      {entry.info.lastDecisionAt ? ` Last decision: ${new Date(entry.info.lastDecisionAt).toLocaleDateString()}.` : null}
+      {entry.info.decisionNotes ? <div className="text-muted">Notes: {entry.info.decisionNotes}</div> : null}
+    </div>
   );
 }
