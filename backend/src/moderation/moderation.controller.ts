@@ -11,7 +11,12 @@ import {
 } from '@nestjs/common';
 import type { RejectSubmissionDto } from '../submissions/dto/reject-submission.dto';
 import { ModerationService } from './moderation.service';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { UseGuards } from '@nestjs/common';
+import { RolesGuard } from '../auth/guards/roles.guard';
 
+@UseGuards(RolesGuard)
+@Roles('moderator')
 @Controller('moderation')
 export class ModerationController {
   constructor(private readonly moderationService: ModerationService) {}

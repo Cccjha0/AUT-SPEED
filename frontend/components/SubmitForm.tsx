@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition } from 'react';
+import { useRef, useState } from 'react';
 import { z } from 'zod';
 import { apiUrl } from '../lib/config';
 import { parseBibtexEntry } from '../lib/bibtex';
@@ -58,7 +58,7 @@ export function SubmitForm() {
   const [form, setForm] = useState<FormState>(INITIAL_STATE);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [doiCheckResult, setDoiCheckResult] = useState<{
     exists: boolean;
@@ -332,34 +332,36 @@ export function SubmitForm() {
       return;
     }
 
-    startTransition(async () => {
-      try {
-        const response = await fetch(apiUrl('/api/submissions'), {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(submissionDto)
-        });
+    setIsSubmitting(true);
+    try {
+      const response = await fetch(apiUrl('/api/submissions'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(submissionDto)
+      });
 
-        const result = await response.json().catch(() => ({ error: { message: 'Unknown error' } }));
+      const result = await response.json().catch(() => ({ error: { message: 'Unknown error' } }));
 
-        if (!response.ok) {
-          const messageFromApi = result?.error?.message ?? 'Submission failed';
-          setError(Array.isArray(messageFromApi) ? messageFromApi.join(', ') : messageFromApi);
-          return;
-        }
-
-          setMessage('Submission queued successfully.');
-          setForm(INITIAL_STATE);
-          setDoiCheckResult(null);
-          setLastCheckedDoi('');
-          setDoiCheckError(null);
-        } catch (err) {
-          const messageFromError = err instanceof Error ? err.message : 'Submission failed';
-        setError(messageFromError);
+      if (!response.ok) {
+        const messageFromApi = result?.error?.message ?? 'Submission failed';
+        setError(Array.isArray(messageFromApi) ? messageFromApi.join(', ') : messageFromApi);
+        setIsSubmitting(false);
+        return;
       }
-    });
+
+      setMessage('Submission queued successfully.');
+      setForm(INITIAL_STATE);
+      setDoiCheckResult(null);
+      setLastCheckedDoi('');
+      setDoiCheckError(null);
+    } catch (err) {
+      const messageFromError = err instanceof Error ? err.message : 'Submission failed';
+      setError(messageFromError);
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -539,8 +541,8 @@ export function SubmitForm() {
       {message ? <div className="success-state">{message}</div> : null}
 
       <div className="inline-buttons">
-        <button type="submit" disabled={isPending}>
-          {isPending ? <LoadingIndicator label="Submitting" /> : 'Submit'}
+        <button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? <LoadingIndicator label="Submitting" /> : 'Submit'}
         </button>
         <button
           type="button"
@@ -553,7 +555,7 @@ export function SubmitForm() {
             setDoiCheckError(null);
           }}
           className="button-secondary"
-          disabled={isPending}
+          disabled={isSubmitting}
         >
           Reset
         </button>

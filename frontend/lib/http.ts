@@ -1,7 +1,8 @@
 import { apiUrl } from './config';
+import { getAuthToken } from './auth';
 
 export async function getJSON<T>(path: string, init?: RequestInit): Promise<T> {
-  const resp = await fetch(apiUrl(path), init);
+  const resp = await fetch(apiUrl(path), withAuth(init));
   if (!resp.ok) {
     throw { status: resp.status, message: await resp.text() };
   }
@@ -20,14 +21,16 @@ async function sendJSON<T>(
   body?: unknown,
   init?: RequestInit
 ): Promise<T> {
+  const authInit = withAuth(init);
+  const headers = normalizeHeaders(authInit.headers);
   const resp = await fetch(apiUrl(path), {
     method,
     headers: {
       'Content-Type': 'application/json',
-      ...(init?.headers ?? {})
+      ...headers
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,
-    ...init
+    ...authInit
   });
 
   if (!resp.ok) {
@@ -60,4 +63,37 @@ export function patchJSON<T>(
   init?: RequestInit
 ): Promise<T> {
   return sendJSON<T>('PATCH', path, body, init);
+}
+
+function normalizeHeaders(headers?: HeadersInit): Record<string, string> {
+  if (!headers) {
+    return {};
+  }
+  if (headers instanceof Headers) {
+    const result: Record<string, string> = {};
+    headers.forEach((value, key) => {
+      result[key] = value;
+    });
+    return result;
+  }
+  if (Array.isArray(headers)) {
+    return Object.fromEntries(headers);
+  }
+  return { ...(headers as Record<string, string>) };
+}
+
+function withAuth(init?: RequestInit): RequestInit {
+  if (typeof window === 'undefined') {
+    return init ?? {};
+  }
+  const token = getAuthToken();
+  if (!token) {
+    return init ?? {};
+  }
+  const headers = normalizeHeaders(init?.headers);
+  headers.Authorization = `Bearer ${token}`;
+  return {
+    ...init,
+    headers
+  };
 }

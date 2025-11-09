@@ -1,16 +1,12 @@
-import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { ModerationController } from './moderation.controller';
 import { ModerationService } from './moderation.service';
-import { ModerationAuthMiddleware } from './middleware/moderation-auth.middleware';
 import { SubmissionsModule } from '../submissions/submissions.module';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
-  imports: [SubmissionsModule],
+  imports: [SubmissionsModule, AuthModule],
   controllers: [ModerationController],
   providers: [ModerationService]
 })
-export class ModerationModule implements NestModule {
-  configure(consumer: MiddlewareConsumer) {
-    consumer.apply(ModerationAuthMiddleware).forRoutes(ModerationController);
-  }
-}
+export class ModerationModule {}

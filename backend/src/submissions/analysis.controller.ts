@@ -9,7 +9,12 @@ import {
 } from '@nestjs/common';
 import { SubmissionsService } from './submissions.service';
 import { AnalysisStatus } from './schemas/article-submission.schema';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { UseGuards } from '@nestjs/common';
 
+@UseGuards(RolesGuard)
+@Roles('analyst')
 @Controller('analysis')
 export class AnalysisController {
   constructor(private readonly submissionsService: SubmissionsService) {}

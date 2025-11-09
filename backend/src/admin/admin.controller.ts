@@ -6,12 +6,17 @@ import {
   Post
 } from '@nestjs/common';
 import { AdminService } from './admin.service';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { UseGuards } from '@nestjs/common';
 
 interface ResponsePayload<T> {
   data: T | null;
   error: { message: string } | null;
 }
 
+@UseGuards(RolesGuard)
+@Roles('admin')
 @Controller('admin/seed')
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}

@@ -9,9 +9,12 @@ import {
   Param,
   Patch,
   Post,
-  Query
+  Query,
+  UseGuards
 } from '@nestjs/common';
 import { SubmissionsService } from './submissions.service';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { RolesGuard } from '../auth/guards/roles.guard';
 import { SubmissionStatus } from './schemas/article-submission.schema';
 import { RejectSubmissionDto } from './dto/reject-submission.dto';
 import { ModerationDecisionDto } from './dto/moderation-decision.dto';
@@ -119,6 +122,8 @@ export class SubmissionsController {
     }
   }
 
+  @UseGuards(RolesGuard)
+  @Roles('moderator')
   @Get('rejections')
   async rejections(
     @Query() query: Record<string, string | string[] | undefined>
