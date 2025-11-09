@@ -120,6 +120,40 @@ label {
   width: auto;
 }
 
+.field-group {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.75rem;
+  padding: 0.75rem;
+}
+
+.field-group legend {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.inline-radio {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.info-state {
+  color: #bfdbfe;
+}
+
+.warning-state {
+  color: #fcd34d;
+}
+
+.history-callout {
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 0.75rem;
+  padding: 0.75rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
+  background: rgba(15, 23, 42, 0.65);
+}
+
 .form-grid {
   display: grid;
   gap: 1rem;
