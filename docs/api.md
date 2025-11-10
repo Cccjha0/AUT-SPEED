@@ -313,6 +313,44 @@ On first boot the backend seeds this collection either from `NOTIFY_MODERATORS` 
 
 ---
 
+## System
+
+> **Auth:** Admin only.
+
+| Method | Path               | Description                                              |
+| ------ | ------------------ | -------------------------------------------------------- |
+| GET    | `/system/config`   | Retrieve runtime configuration flags and announcement.   |
+| PATCH  | `/system/config`   | Update one or more configuration fields.                 |
+
+**GET Response**
+
+```json
+{
+  "data": {
+    "maintenanceMode": false,
+    "submissionsOpen": true,
+    "announcement": "",
+    "supportEmail": ""
+  },
+  "error": null
+}
+```
+
+**PATCH Request**
+
+```json
+{
+  "maintenanceMode": true,
+  "submissionsOpen": false,
+  "announcement": "SCHEDULED MAINTENANCE @ 22:00",
+  "supportEmail": "ops@example.com"
+}
+```
+
+Fields are optional; omit any value you do not want to change. UI clients consume this endpoint to toggle maintenance mode, temporarily pause submissions, and publish operator messages.
+
+---
+
 ## Search
 
 Read-only endpoints that aggregate data for UI consumption.

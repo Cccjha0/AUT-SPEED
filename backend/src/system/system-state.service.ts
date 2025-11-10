@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { Model } from 'mongoose';
 import { SystemState, type SystemStateDocument } from './system-state.schema';
+import { UpdateSystemConfigDto } from './dto/update-system-config.dto';
 
 const GLOBAL_ID = 'global';
 
@@ -64,5 +65,45 @@ export class SystemStateService {
         { upsert: true }
       )
       .lean();
+  }
+
+  async getConfig() {
+    const state = await this.getState();
+    return this.extractConfig(state);
+  }
+
+  async updateConfig(update: UpdateSystemConfigDto) {
+    const $set: Record<string, unknown> = {};
+    if (update.maintenanceMode !== undefined) {
+      $set.maintenanceMode = update.maintenanceMode;
+    }
+    if (update.submissionsOpen !== undefined) {
+      $set.submissionsOpen = update.submissionsOpen;
+    }
+    if (update.announcement !== undefined) {
+      $set.announcement = update.announcement;
+    }
+    if (update.supportEmail !== undefined) {
+      $set.supportEmail = update.supportEmail;
+    }
+    if (Object.keys($set).length) {
+      await this.stateModel
+        .findByIdAndUpdate(
+          GLOBAL_ID,
+          { $set },
+          { upsert: true }
+        )
+        .lean();
+    }
+    return this.getConfig();
+  }
+
+  private extractConfig(state: SystemStateDocument) {
+    return {
+      maintenanceMode: state.maintenanceMode ?? false,
+      submissionsOpen: state.submissionsOpen ?? true,
+      announcement: state.announcement ?? '',
+      supportEmail: state.supportEmail ?? ''
+    };
   }
 }

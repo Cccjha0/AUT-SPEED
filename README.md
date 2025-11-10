@@ -65,6 +65,16 @@ The backend auto-seeds staff credentials in empty databases so you can sign in i
 
 Update or delete these accounts via the `/api/staff` endpoints (or the admin UI) once your own staff directory is ready.
 
+## Admin Console
+
+Visit `/admin` (while signed in as an administrator) to:
+
+- Manage the staff directory (create, deactivate, reset passwords, delete).
+- Toggle system configuration such as maintenance mode, submission availability, announcement text, and support email.
+- Trigger the demo seeding workflow to repopulate practices/claims/evidence for local testing.
+
+All actions call the secured `/api/staff`, `/api/system/config`, and `/api/admin/seed/*` endpoints, so changes take effect immediately.
+
 ## Development Flow
 
 1. Create a feature branch following the rules in `docs/Development-Standards.md`.

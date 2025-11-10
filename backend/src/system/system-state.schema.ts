@@ -19,6 +19,18 @@ export class SystemState {
 
   @Prop({ type: Date, default: null })
   analysisReminderSentAt?: Date | null;
+
+  @Prop({ type: Boolean, default: false })
+  maintenanceMode?: boolean;
+
+  @Prop({ type: Boolean, default: true })
+  submissionsOpen?: boolean;
+
+  @Prop({ type: String, trim: true, default: '' })
+  announcement?: string;
+
+  @Prop({ type: String, trim: true, default: '' })
+  supportEmail?: string;
 }
 
 export const SystemStateSchema = SchemaFactory.createForClass(SystemState);
