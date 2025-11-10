@@ -13,6 +13,7 @@ import { SubmissionsModule } from './submissions/submissions.module';
 import { AdminModule } from './admin/admin.module';
 import { AuthModule } from './auth/auth.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { SystemModule } from './system/system.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { NotificationsModule } from './notifications/notifications.module';
     }),
     AuthModule,
     NotificationsModule,
+    SystemModule,
     PracticesModule,
     ClaimsModule,
     SubmissionsModule,

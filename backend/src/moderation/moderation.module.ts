@@ -4,9 +4,10 @@ import { ModerationService } from './moderation.service';
 import { SubmissionsModule } from '../submissions/submissions.module';
 import { AuthModule } from '../auth/auth.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { SystemModule } from '../system/system.module';
 
 @Module({
-  imports: [SubmissionsModule, AuthModule, NotificationsModule],
+  imports: [SubmissionsModule, AuthModule, NotificationsModule, SystemModule],
   controllers: [ModerationController],
   providers: [ModerationService]
 })

@@ -9,6 +9,7 @@ import {
 import { AnalysisController } from './analysis.controller';
 import { AuthModule } from '../auth/auth.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { SystemModule } from '../system/system.module';
 
 @Module({
   imports: [
@@ -16,7 +17,8 @@ import { NotificationsModule } from '../notifications/notifications.module';
       { name: ArticleSubmission.name, schema: ArticleSubmissionSchema }
     ]),
     AuthModule,
-    NotificationsModule
+    NotificationsModule,
+    SystemModule
   ],
   controllers: [SubmissionsController, AnalysisController],
   providers: [SubmissionsService],
