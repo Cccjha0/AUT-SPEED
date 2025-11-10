@@ -39,6 +39,7 @@ const initialStaffForm: StaffFormState = {
 
 export function AdminDashboardClient() {
   const [staff, setStaff] = useState<StaffMember[]>([]);
+  const [, setSystemConfig] = useState<SystemConfig | null>(null);
   const [isLoadingStaff, setIsLoadingStaff] = useState(false);
   const [isSavingStaff, setIsSavingStaff] = useState(false);
   const [staffForm, setStaffForm] = useState<StaffFormState>(initialStaffForm);
