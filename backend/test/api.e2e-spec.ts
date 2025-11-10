@@ -631,16 +631,18 @@ describe('REST API (e2e)', () => {
       const createRes = await request(server())
         .post('/api/staff')
         .send({
-          email: 'moderator@example.com',
+          email: 'moderator.staff-test@example.com',
           name: 'Moderator Example',
           roles: ['moderator'],
-          active: true
+          active: true,
+          password: 'SecurePass123'
         })
         .expect(201);
 
       expect(createRes.body.error).toBeNull();
-      expect(createRes.body.data.email).toBe('moderator@example.com');
+      expect(createRes.body.data.email).toBe('moderator.staff-test@example.com');
       expect(createRes.body.data.roles).toContain('moderator');
+      expect(createRes.body.data.passwordHash).toBeUndefined();
       const staffId = createRes.body.data._id;
 
       const listRes = await request(server())
@@ -649,7 +651,7 @@ describe('REST API (e2e)', () => {
       expect(listRes.body.error).toBeNull();
       expect(listRes.body.data).toEqual(
         expect.arrayContaining([
-          expect.objectContaining({ email: 'moderator@example.com' })
+          expect.objectContaining({ email: 'moderator.staff-test@example.com' })
         ])
       );
 
@@ -668,6 +670,7 @@ describe('REST API (e2e)', () => {
         .expect(200);
       expect(deleteRes.body.error).toBeNull();
       expect(deleteRes.body.data._id).toBe(staffId);
+      expect(deleteRes.body.data.passwordHash).toBeUndefined();
     });
   });
 });

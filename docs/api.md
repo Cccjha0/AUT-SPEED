@@ -271,12 +271,12 @@ Standard HTTP error codes:
 
 > **Auth:** Requires an `admin` role token (guard is bypassed automatically when `NODE_ENV === 'test'`).
 
-| Method | Path          | Description                                                 |
-| ------ | ------------- | ----------------------------------------------------------- |
-| GET    | `/staff`      | List staff. Supports `role=<role>` and `active=true|false`. |
-| POST   | `/staff`      | Create a staff member with email, name, roles, and status.  |
-| PATCH  | `/staff/:id`  | Update fields (email, name, roles, active).                 |
-| DELETE | `/staff/:id`  | Remove a staff member.                                      |
+| Method | Path          | Description                                                    |
+| ------ | ------------- | -------------------------------------------------------------- |
+| GET    | `/staff`      | List staff. Supports `role=<role>` and `active=true|false`.    |
+| POST   | `/staff`      | Create a staff member with email, name, roles, password, etc.  |
+| PATCH  | `/staff/:id`  | Update fields (email, name, roles, active, password).          |
+| DELETE | `/staff/:id`  | Remove a staff member.                                         |
 
 **Create Request**
 
@@ -285,7 +285,8 @@ Standard HTTP error codes:
   "email": "moderator@example.com",
   "name": "Queue Moderator",
   "roles": ["moderator", "analyst"],
-  "active": true
+  "active": true,
+  "password": "ChangeMe123"
 }
 ```
 
@@ -300,6 +301,7 @@ Standard HTTP error codes:
     "roles": ["moderator", "analyst"],
     "active": true,
     "lastNotifiedAt": null,
+    "lastLoginAt": null,
     "createdAt": "...",
     "updatedAt": "..."
   },
@@ -307,7 +309,7 @@ Standard HTTP error codes:
 }
 ```
 
-On first boot the backend optionally seeds this collection from the legacy `NOTIFY_MODERATORS` and `NOTIFY_ANALYSTS` env lists; afterwards all notifications and queue reminders read from this collection (with a short-lived cache inside the notifications service).
+On first boot the backend seeds this collection either from `NOTIFY_MODERATORS` / `NOTIFY_ANALYSTS` (if present) or with a default trio (`admin@example.com`, `moderator@example.com`, `analyst@example.com`) so you can log in immediately. Update the accounts — including their passwords — via these endpoints. All queue notifications and authentication now resolve recipients from this collection, with a short-lived cache inside the notifications service.
 
 ---
 

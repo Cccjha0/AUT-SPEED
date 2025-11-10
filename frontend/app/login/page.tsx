@@ -51,8 +51,13 @@ export default function LoginPage() {
         </p>
         <form className="form-grid" onSubmit={handleSubmit}>
           <label>
-            Username
-            <input value={username} onChange={event => setUsername(event.target.value)} required />
+            Email
+            <input
+              type="email"
+              value={username}
+              onChange={event => setUsername(event.target.value)}
+              required
+            />
           </label>
           <label>
             Password

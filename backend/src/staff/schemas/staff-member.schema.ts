@@ -19,11 +19,17 @@ export class StaffMember {
   @Prop({ type: [String], required: true, default: [], index: true })
   roles!: string[];
 
+  @Prop({ required: true })
+  passwordHash!: string;
+
   @Prop({ type: Boolean, default: true })
   active!: boolean;
 
   @Prop({ type: Date, default: null })
   lastNotifiedAt?: Date | null;
+
+  @Prop({ type: Date, default: null })
+  lastLoginAt?: Date | null;
 
   readonly createdAt!: Date;
   readonly updatedAt!: Date;
