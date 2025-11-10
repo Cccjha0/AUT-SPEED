@@ -221,7 +221,7 @@ export function AdminDashboardClient() {
         </header>
         <div className="admin-panel-grid">
           <div className="admin-panel">
-            <div className="table-responsive">
+            <div className="table-responsive staff-table">
               <table className="admin-table">
                 <thead>
                   <tr>
