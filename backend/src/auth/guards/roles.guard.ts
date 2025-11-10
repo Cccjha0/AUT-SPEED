@@ -5,7 +5,7 @@ import {
   Injectable,
   UnauthorizedException
 } from '@nestjs/common';
-  import { Reflector } from '@nestjs/core';
+import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 import { ROLES_KEY } from '../decorators/roles.decorator';
 import { AuthService } from '../auth.service';
@@ -44,6 +44,14 @@ export class RolesGuard implements CanActivate {
 
     const user = await this.authService.verifyToken(token);
     request.user = user;
+
+    if (user.roles.includes('admin')) {
+      return true;
+    }
+
+    if (user.roles.includes('admin')) {
+      return true;
+    }
 
     const allowed = requiredRoles.some(role => user.roles.includes(role));
     if (!allowed) {

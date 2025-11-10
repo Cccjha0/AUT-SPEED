@@ -673,4 +673,34 @@ describe('REST API (e2e)', () => {
       expect(deleteRes.body.data.passwordHash).toBeUndefined();
     });
   });
+
+  describe('System config', () => {
+    it('reads and updates global settings', async () => {
+      const getRes = await request(server())
+        .get('/api/system/config')
+        .expect(200);
+      expect(getRes.body.error).toBeNull();
+      expect(getRes.body.data).toMatchObject({
+        maintenanceMode: false,
+        submissionsOpen: true
+      });
+
+      const updateRes = await request(server())
+        .patch('/api/system/config')
+        .send({
+          maintenanceMode: true,
+          submissionsOpen: false,
+          announcement: 'Maintenance tonight',
+          supportEmail: 'ops@example.com'
+        })
+        .expect(200);
+      expect(updateRes.body.error).toBeNull();
+      expect(updateRes.body.data).toMatchObject({
+        maintenanceMode: true,
+        submissionsOpen: false,
+        announcement: 'Maintenance tonight',
+        supportEmail: 'ops@example.com'
+      });
+    });
+  });
 });

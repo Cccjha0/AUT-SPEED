@@ -65,6 +65,13 @@ export function patchJSON<T>(
   return sendJSON<T>('PATCH', path, body, init);
 }
 
+export function deleteJSON<T>(
+  path: string,
+  init?: RequestInit
+): Promise<T> {
+  return sendJSON<T>('DELETE', path, undefined, init);
+}
+
 function normalizeHeaders(headers?: HeadersInit): Record<string, string> {
   if (!headers) {
     return {};

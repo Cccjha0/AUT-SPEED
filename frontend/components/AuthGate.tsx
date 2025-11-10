@@ -23,7 +23,8 @@ export function AuthGate({ roles = [], children }: AuthGateProps) {
       return;
     }
     const storedRoles = getStoredRoles();
-    if (roles.length && !roles.some(role => storedRoles.includes(role))) {
+    const isAdmin = storedRoles.includes("admin");
+    if (roles.length && !isAdmin && !roles.some(role => storedRoles.includes(role))) {
       setStatus("denied");
       return;
     }
