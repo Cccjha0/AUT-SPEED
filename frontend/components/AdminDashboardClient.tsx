@@ -39,7 +39,6 @@ const initialStaffForm: StaffFormState = {
 
 export function AdminDashboardClient() {
   const [staff, setStaff] = useState<StaffMember[]>([]);
-  const [config, setConfig] = useState<SystemConfig | null>(null);
   const [isLoadingStaff, setIsLoadingStaff] = useState(false);
   const [isSavingStaff, setIsSavingStaff] = useState(false);
   const [staffForm, setStaffForm] = useState<StaffFormState>(initialStaffForm);
@@ -82,7 +81,7 @@ export function AdminDashboardClient() {
     setConfigMessage(null);
     try {
       const data = await getJSON<SystemConfig>("/api/system/config");
-      setConfig(data);
+      setSystemConfig(data);
       setConfigDraft(data);
     } catch (error) {
       setConfigMessage(parseError(error));
@@ -179,7 +178,7 @@ export function AdminDashboardClient() {
         announcement: configDraft.announcement,
         supportEmail: configDraft.supportEmail
       });
-      setConfig(data);
+      setSystemConfig(data);
       setConfigDraft(data);
       setConfigMessage("Configuration saved.");
     } catch (error) {
