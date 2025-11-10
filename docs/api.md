@@ -267,6 +267,50 @@ Standard HTTP error codes:
 
 ---
 
+## Staff
+
+> **Auth:** Requires an `admin` role token (guard is bypassed automatically when `NODE_ENV === 'test'`).
+
+| Method | Path          | Description                                                 |
+| ------ | ------------- | ----------------------------------------------------------- |
+| GET    | `/staff`      | List staff. Supports `role=<role>` and `active=true|false`. |
+| POST   | `/staff`      | Create a staff member with email, name, roles, and status.  |
+| PATCH  | `/staff/:id`  | Update fields (email, name, roles, active).                 |
+| DELETE | `/staff/:id`  | Remove a staff member.                                      |
+
+**Create Request**
+
+```json
+{
+  "email": "moderator@example.com",
+  "name": "Queue Moderator",
+  "roles": ["moderator", "analyst"],
+  "active": true
+}
+```
+
+**Create Response**
+
+```json
+{
+  "data": {
+    "_id": "64d6a2...",
+    "email": "moderator@example.com",
+    "name": "Queue Moderator",
+    "roles": ["moderator", "analyst"],
+    "active": true,
+    "lastNotifiedAt": null,
+    "createdAt": "...",
+    "updatedAt": "..."
+  },
+  "error": null
+}
+```
+
+On first boot the backend optionally seeds this collection from the legacy `NOTIFY_MODERATORS` and `NOTIFY_ANALYSTS` env lists; afterwards all notifications and queue reminders read from this collection (with a short-lived cache inside the notifications service).
+
+---
+
 ## Search
 
 Read-only endpoints that aggregate data for UI consumption.

@@ -625,4 +625,49 @@ describe('REST API (e2e)', () => {
       expect(avg.body.data.count).toBe(1);
     });
   });
+
+  describe('Staff', () => {
+    it('allows admins to manage staff members', async () => {
+      const createRes = await request(server())
+        .post('/api/staff')
+        .send({
+          email: 'moderator@example.com',
+          name: 'Moderator Example',
+          roles: ['moderator'],
+          active: true
+        })
+        .expect(201);
+
+      expect(createRes.body.error).toBeNull();
+      expect(createRes.body.data.email).toBe('moderator@example.com');
+      expect(createRes.body.data.roles).toContain('moderator');
+      const staffId = createRes.body.data._id;
+
+      const listRes = await request(server())
+        .get('/api/staff?role=moderator')
+        .expect(200);
+      expect(listRes.body.error).toBeNull();
+      expect(listRes.body.data).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ email: 'moderator@example.com' })
+        ])
+      );
+
+      const updateRes = await request(server())
+        .patch(`/api/staff/${staffId}`)
+        .send({ roles: ['moderator', 'analyst'], active: false })
+        .expect(200);
+      expect(updateRes.body.error).toBeNull();
+      expect(updateRes.body.data.active).toBe(false);
+      expect(updateRes.body.data.roles).toEqual(
+        expect.arrayContaining(['moderator', 'analyst'])
+      );
+
+      const deleteRes = await request(server())
+        .delete(`/api/staff/${staffId}`)
+        .expect(200);
+      expect(deleteRes.body.error).toBeNull();
+      expect(deleteRes.body.data._id).toBe(staffId);
+    });
+  });
 });

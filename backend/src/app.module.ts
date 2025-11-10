@@ -14,6 +14,7 @@ import { AdminModule } from './admin/admin.module';
 import { AuthModule } from './auth/auth.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { SystemModule } from './system/system.module';
+import { StaffModule } from './staff/staff.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { SystemModule } from './system/system.module';
       })
     }),
     AuthModule,
+    StaffModule,
     NotificationsModule,
     SystemModule,
     PracticesModule,
