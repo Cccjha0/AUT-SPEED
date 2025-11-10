@@ -208,166 +208,178 @@ export function AdminDashboardClient() {
   }
 
   return (
-    <div className="page stack-lg">
-      <section className="card stack-md">
-        <h2>Staff Directory</h2>
-        <p className="text-muted">
-          Manage analyst, moderator, and admin accounts. Password changes apply immediately.
-        </p>
-        {staffMessage ? <p className="info-state">{staffMessage}</p> : null}
-        <div className="table-responsive">
-          <table>
-            <thead>
-              <tr>
-                <th>Email</th>
-                <th>Roles</th>
-                <th>Active</th>
-                <th>Last Login</th>
-                <th aria-label="actions" />
-              </tr>
-            </thead>
-            <tbody>
-              {isLoadingStaff ? (
-                <tr>
-                  <td colSpan={5}>Loading staff...</td>
-                </tr>
-              ) : staffSorted.length ? (
-                staffSorted.map(member => (
-                  <tr key={member._id}>
-                    <td>
-                      <strong>{member.email}</strong>
-                      {member.name ? (
-                        <span className="text-muted block-label">
-                          {member.name}
-                        </span>
-                      ) : null}
-                    </td>
-                    <td>{member.roles.join(", ") || "—"}</td>
-                    <td>{member.active ? "Yes" : "No"}</td>
-                    <td>
-                      {member.lastLoginAt
-                        ? new Date(member.lastLoginAt).toLocaleString()
-                        : "Never"}
-                    </td>
-                    <td className="stack-sm">
-                      <button
-                        type="button"
-                        className="button-secondary"
-                        onClick={() => toggleActive(member)}
-                      >
-                        {member.active ? "Deactivate" : "Activate"}
-                      </button>
-                      <button
-                        type="button"
-                        className="button-secondary"
-                        onClick={() => resetPassword(member)}
-                      >
-                        Reset Password
-                      </button>
-                      <button
-                        type="button"
-                        className="button-danger"
-                        onClick={() => deleteMember(member)}
-                      >
-                        Delete
-                      </button>
-                    </td>
+    <div className="page admin-dashboard stack-lg">
+      <section className="card admin-section">
+        <header className="admin-section__header">
+          <div>
+            <h2>Staff Directory</h2>
+            <p className="text-muted">
+              Manage analyst, moderator, and admin accounts. Password changes apply immediately.
+            </p>
+          </div>
+          {staffMessage ? <p className="info-state">{staffMessage}</p> : null}
+        </header>
+        <div className="admin-panel-grid">
+          <div className="admin-panel">
+            <div className="table-responsive">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>Email</th>
+                    <th>Roles</th>
+                    <th>Active</th>
+                    <th>Last Login</th>
+                    <th aria-label="actions" />
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={5}>No staff entries yet.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        <form className="form-grid" onSubmit={handleCreateStaff}>
-          <h3>Add Staff Member</h3>
-          <label>
-            Email
-            <input
-              type="email"
-              required
-              value={staffForm.email}
-              onChange={event =>
-                setStaffForm(current => ({
-                  ...current,
-                  email: event.target.value
-                }))
-              }
-            />
-          </label>
-          <label>
-            Name
-            <input
-              value={staffForm.name}
-              onChange={event =>
-                setStaffForm(current => ({
-                  ...current,
-                  name: event.target.value
-                }))
-              }
-            />
-          </label>
-          <label>
-            Password
-            <input
-              type="password"
-              required
-              minLength={8}
-              value={staffForm.password}
-              onChange={event =>
-                setStaffForm(current => ({
-                  ...current,
-                  password: event.target.value
-                }))
-              }
-            />
-          </label>
-          <fieldset>
-            <legend>Roles</legend>
-            <div className="inline-checkboxes">
-              {ROLE_OPTIONS.map(option => (
-                <label key={option}>
-                  <input
-                    type="checkbox"
-                    checked={staffForm.roles.includes(option)}
-                    onChange={() => handleRoleToggle(option)}
-                  />
-                  {option}
-                </label>
-              ))}
+                </thead>
+                <tbody>
+                  {isLoadingStaff ? (
+                    <tr>
+                      <td colSpan={5}>Loading staff...</td>
+                    </tr>
+                  ) : staffSorted.length ? (
+                    staffSorted.map(member => (
+                      <tr key={member._id}>
+                        <td>
+                          <strong>{member.email}</strong>
+                          {member.name ? (
+                            <span className="text-muted block-label">
+                              {member.name}
+                            </span>
+                          ) : null}
+                        </td>
+                        <td>{member.roles.join(", ") || "—"}</td>
+                        <td>{member.active ? "Yes" : "No"}</td>
+                        <td>
+                          {member.lastLoginAt
+                            ? new Date(member.lastLoginAt).toLocaleString()
+                            : "Never"}
+                        </td>
+                        <td className="stack-sm admin-actions">
+                          <button
+                            type="button"
+                            className="button-secondary"
+                            onClick={() => toggleActive(member)}
+                          >
+                            {member.active ? "Deactivate" : "Activate"}
+                          </button>
+                          <button
+                            type="button"
+                            className="button-secondary"
+                            onClick={() => resetPassword(member)}
+                          >
+                            Reset Password
+                          </button>
+                          <button
+                            type="button"
+                            className="button-danger"
+                            onClick={() => deleteMember(member)}
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={5}>No staff entries yet.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
-          </fieldset>
-          <label className="checkbox-row">
-            <input
-              type="checkbox"
-              checked={staffForm.active}
-              onChange={event =>
-                setStaffForm(current => ({
-                  ...current,
-                  active: event.target.checked
-                }))
-              }
-            />
-            Active
-          </label>
-          <button type="submit" disabled={isSavingStaff}>
-            {isSavingStaff ? "Creating..." : "Create Staff"}
-          </button>
-        </form>
+          </div>
+
+          <form className="admin-panel form-grid" onSubmit={handleCreateStaff}>
+            <h3>Add Staff Member</h3>
+            <label>
+              Email
+              <input
+                type="email"
+                required
+                value={staffForm.email}
+                onChange={event =>
+                  setStaffForm(current => ({
+                    ...current,
+                    email: event.target.value
+                  }))
+                }
+              />
+            </label>
+            <label>
+              Name
+              <input
+                value={staffForm.name}
+                onChange={event =>
+                  setStaffForm(current => ({
+                    ...current,
+                    name: event.target.value
+                  }))
+                }
+              />
+            </label>
+            <label>
+              Password
+              <input
+                type="password"
+                required
+                minLength={8}
+                value={staffForm.password}
+                onChange={event =>
+                  setStaffForm(current => ({
+                    ...current,
+                    password: event.target.value
+                  }))
+                }
+              />
+            </label>
+            <fieldset>
+              <legend>Roles</legend>
+              <div className="inline-checkboxes">
+                {ROLE_OPTIONS.map(option => (
+                  <label key={option}>
+                    <input
+                      type="checkbox"
+                      checked={staffForm.roles.includes(option)}
+                      onChange={() => handleRoleToggle(option)}
+                    />
+                    {option}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+            <label className="checkbox-row">
+              <input
+                type="checkbox"
+                checked={staffForm.active}
+                onChange={event =>
+                  setStaffForm(current => ({
+                    ...current,
+                    active: event.target.checked
+                  }))
+                }
+              />
+              Active
+            </label>
+            <button type="submit" disabled={isSavingStaff}>
+              {isSavingStaff ? "Creating..." : "Create Staff"}
+            </button>
+          </form>
+        </div>
       </section>
 
-      <section className="card stack-md">
-        <h2>System Configuration</h2>
-        <p className="text-muted">
-          Toggle maintenance mode, close submissions, or publish announcements to the team.
-        </p>
-        {configMessage ? <p className="info-state">{configMessage}</p> : null}
+      <section className="card admin-section">
+        <header className="admin-section__header">
+          <div>
+            <h2>System Configuration</h2>
+            <p className="text-muted">
+              Toggle maintenance mode, close submissions, or publish announcements to the team.
+            </p>
+          </div>
+          {configMessage ? <p className="info-state">{configMessage}</p> : null}
+        </header>
         {configDraft ? (
-          <form className="form-grid" onSubmit={saveConfig}>
+          <form className="form-grid admin-panel" onSubmit={saveConfig}>
             <label className="checkbox-row">
               <input
                 type="checkbox"
@@ -428,19 +440,27 @@ export function AdminDashboardClient() {
             </button>
           </form>
         ) : (
-          <p>Loading configuration...</p>
+          <div className="admin-panel">
+            <p className="text-muted">Loading configuration…</p>
+          </div>
         )}
       </section>
 
-      <section className="card stack-md">
-        <h2>Data Utilities</h2>
-        <p className="text-muted">
-          Re-seed demo practices, claims, submissions, and evidence for local testing.
-        </p>
-        {seedStatus ? <p className="info-state">{seedStatus}</p> : null}
-        <button type="button" onClick={runSeed} disabled={isSeeding}>
-          {isSeeding ? "Seeding..." : "Run demo seed"}
-        </button>
+      <section className="card admin-section">
+        <header className="admin-section__header">
+          <div>
+            <h2>Data Utilities</h2>
+            <p className="text-muted">
+              Re-seed demo practices, claims, submissions, and evidence for local testing.
+            </p>
+          </div>
+          {seedStatus ? <p className="info-state">{seedStatus}</p> : null}
+        </header>
+        <div className="admin-panel">
+          <button type="button" onClick={runSeed} disabled={isSeeding}>
+            {isSeeding ? "Seeding..." : "Run demo seed"}
+          </button>
+        </div>
       </section>
     </div>
   );
