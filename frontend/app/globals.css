@@ -321,6 +321,17 @@ select {
   width: min(1100px, 100%);
 }
 
+.checkbox-row {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.checkbox-row input[type='checkbox'] {
+  width: auto;
+  margin: 0;
+}
+
 .admin-section {
   gap: 1.5rem;
 }
@@ -367,6 +378,11 @@ select {
 
 .admin-table tbody tr:hover {
   background: rgba(56, 189, 248, 0.08);
+}
+
+.staff-table {
+  max-height: 420px;
+  overflow: auto;
 }
 
 .admin-actions {
