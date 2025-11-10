@@ -101,6 +101,3 @@ export class ArticleSubmission {
 }
 
 export const ArticleSubmissionSchema = SchemaFactory.createForClass(ArticleSubmission);
-
-ArticleSubmissionSchema.index({ doi: 1 }, { unique: true, sparse: true });
-ArticleSubmissionSchema.index({ analysisStatus: 1 });

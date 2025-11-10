@@ -8,13 +8,15 @@ import {
 } from './schemas/article-submission.schema';
 import { AnalysisController } from './analysis.controller';
 import { AuthModule } from '../auth/auth.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: ArticleSubmission.name, schema: ArticleSubmissionSchema }
     ]),
-    AuthModule
+    AuthModule,
+    NotificationsModule
   ],
   controllers: [SubmissionsController, AnalysisController],
   providers: [SubmissionsService],

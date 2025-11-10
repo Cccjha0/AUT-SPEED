@@ -4,6 +4,7 @@ import { MongoMemoryServer } from 'mongodb-memory-server';
 import mongoose from 'mongoose';
 import { randomUUID } from 'crypto';
 import { AppModule } from '../../src/app.module';
+import { MailerService } from '../../src/notifications/providers/mailer.service';
 import { PracticesService } from '../../src/practices/practices.service';
 import { ClaimsService } from '../../src/claims/claims.service';
 import { SubmissionsService } from '../../src/submissions/submissions.service';
@@ -27,7 +28,12 @@ export async function createTestApp(): Promise<TestApp> {
 
   const moduleFixture: TestingModule = await Test.createTestingModule({
     imports: [AppModule]
-  }).compile();
+  })
+    .overrideProvider(MailerService)
+    .useValue({
+      sendMail: async () => undefined
+    })
+    .compile();
 
   const app = moduleFixture.createNestApplication();
   app.setGlobalPrefix('api');

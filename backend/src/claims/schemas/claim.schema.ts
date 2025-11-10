@@ -27,5 +27,4 @@ export class Claim {
 
 export const ClaimSchema = SchemaFactory.createForClass(Claim);
 
-ClaimSchema.index({ key: 1 }, { unique: true });
 ClaimSchema.index({ practiceKey: 1 });
