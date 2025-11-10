@@ -66,6 +66,18 @@ export class MailerService {
       });
     }
 
+    if (process.env.RESEND_API_KEY) {
+      return nodemailer.createTransport({
+        host: process.env.RESEND_SMTP_HOST || 'smtp.resend.com',
+        port: Number(process.env.RESEND_SMTP_PORT) || 587,
+        secure: false,
+        auth: {
+          user: process.env.RESEND_SMTP_USER || 'resend',
+          pass: process.env.RESEND_API_KEY
+        }
+      });
+    }
+
     return nodemailer.createTransport({
       host: process.env.SMTP_HOST || 'localhost',
       port: Number(process.env.SMTP_PORT) || 1025,
