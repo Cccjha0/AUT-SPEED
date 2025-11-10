@@ -1,4 +1,4 @@
-
+﻿
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
@@ -55,6 +55,14 @@ export function ModerationQueue({ items, total, initialError }: ModerationQueueP
   }>>({});
   const [history, setHistory] = useState<Record<string, HistoryEntry>>({});
   const fetchedHistory = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    setQueue(items);
+  }, [items]);
+
+  useEffect(() => {
+    setError(initialError ?? null);
+  }, [initialError]);
+
 
   useEffect(() => {
     setDecisions(prev => {
@@ -318,7 +326,7 @@ function renderHistoryCallout(
   const key = doi.trim().toLowerCase();
   const entry = history[key];
   if (!entry || entry.loading) {
-    return <div className="history-callout text-muted">Checking existing submissions…</div>;
+    return <div className="history-callout text-muted">Checking existing submissions...</div>;
   }
   if (entry.error) {
     return <div className="history-callout warning-state">{entry.error}</div>;
@@ -341,3 +349,4 @@ function renderHistoryCallout(
     </div>
   );
 }
+
