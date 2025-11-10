@@ -5,7 +5,8 @@ import {
   IsBoolean,
   IsEmail,
   IsOptional,
-  IsString
+  IsString,
+  MinLength
 } from 'class-validator';
 import {
   normalizeEmail,
@@ -36,4 +37,9 @@ export class UpdateStaffMemberDto {
   @IsBoolean()
   @Transform(({ value }) => toOptionalBoolean(value))
   active?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(8)
+  password?: string;
 }

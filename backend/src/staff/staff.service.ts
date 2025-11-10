@@ -1,15 +1,20 @@
 import {
   BadRequestException,
   Injectable,
-  NotFoundException
+  NotFoundException,
+  UnauthorizedException
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { FilterQuery, Model } from 'mongoose';
 import { isValidObjectId } from 'mongoose';
+import { randomBytes, scrypt as _scrypt } from 'crypto';
+import { promisify } from 'util';
 import { StaffMember, StaffMemberDocument } from './schemas/staff-member.schema';
 import { CreateStaffMemberDto } from './dto/create-staff-member.dto';
 import { UpdateStaffMemberDto } from './dto/update-staff-member.dto';
 import { ListStaffMembersQueryDto } from './dto/list-staff-members.dto';
+
+const scrypt = promisify(_scrypt);
 
 @Injectable()
 export class StaffService {
@@ -23,15 +28,17 @@ export class StaffService {
     if (!roles.length) {
       throw new BadRequestException('At least one role is required');
     }
+    const passwordHash = await this.hashPassword(dto.password);
     const doc = new this.staffModel({
       email: dto.email,
       name: dto.name,
       roles,
-      active: dto.active ?? true
+      active: dto.active ?? true,
+      passwordHash
     });
     try {
       const saved = await doc.save();
-      return saved.toObject();
+      return this.sanitize(saved.toObject());
     } catch (error) {
       this.handleMongooseError(error);
     }
@@ -45,10 +52,11 @@ export class StaffService {
     if (typeof query.active === 'boolean') {
       filter.active = query.active;
     }
-    return this.staffModel
+    const staff = await this.staffModel
       .find(filter)
       .sort({ name: 1, email: 1 })
       .lean();
+    return staff.map(entry => this.sanitize(entry));
   }
 
   async findById(id: string) {
@@ -57,7 +65,7 @@ export class StaffService {
     if (!staff) {
       throw new NotFoundException('Staff member not found');
     }
-    return staff;
+    return this.sanitize(staff);
   }
 
   async update(id: string, dto: UpdateStaffMemberDto) {
@@ -83,10 +91,13 @@ export class StaffService {
     if (dto.active !== undefined) {
       staff.active = dto.active;
     }
+    if (dto.password) {
+      staff.passwordHash = await this.hashPassword(dto.password);
+    }
 
     try {
       const saved = await staff.save();
-      return saved.toObject();
+      return this.sanitize(saved.toObject());
     } catch (error) {
       this.handleMongooseError(error);
     }
@@ -98,7 +109,7 @@ export class StaffService {
     if (!removed) {
       throw new NotFoundException('Staff member not found');
     }
-    return removed;
+    return this.sanitize(removed);
   }
 
   async listActiveEmailsByRole(role: string) {
@@ -123,20 +134,48 @@ export class StaffService {
     );
   }
 
+  async authenticate(email: string, password: string) {
+    const identifier = email.trim().toLowerCase();
+    if (!identifier) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+    const staff = await this.staffModel
+      .findOne({ email: identifier, active: true })
+      .lean();
+    if (!staff?.passwordHash) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+    const valid = await this.verifyPassword(password, staff.passwordHash);
+    if (!valid) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+    return this.sanitize(staff);
+  }
+
+  async recordLogin(id: string) {
+    if (!isValidObjectId(id)) {
+      return;
+    }
+    await this.staffModel.findByIdAndUpdate(id, {
+      $set: { lastLoginAt: new Date() }
+    });
+  }
+
   async seedFromEnvIfEmpty() {
     const existing = await this.staffModel.estimatedDocumentCount();
     if (existing > 0) {
       return { inserted: 0, skipped: existing };
     }
-    const seedEntries = this.collectSeedEntriesFromEnv();
-    if (!seedEntries.length) {
+    const seedEntries = await this.collectSeedEntriesFromEnv();
+    const entries = seedEntries.length ? seedEntries : await this.defaultSeedEntries();
+    if (!entries.length) {
       return { inserted: 0, skipped: 0 };
     }
-    await this.staffModel.insertMany(seedEntries, { ordered: false });
-    return { inserted: seedEntries.length, skipped: 0 };
+    await this.staffModel.insertMany(entries, { ordered: false });
+    return { inserted: entries.length, skipped: 0 };
   }
 
-  private collectSeedEntriesFromEnv() {
+  private async collectSeedEntriesFromEnv() {
     const sources: Record<string, string | undefined> = {
       moderator: process.env.NOTIFY_MODERATORS,
       analyst: process.env.NOTIFY_ANALYSTS
@@ -157,12 +196,38 @@ export class StaffService {
           map.get(email)!.add(role);
         });
     });
+    if (!map.size) {
+      return [];
+    }
+    const defaultPassword =
+      process.env.STAFF_DEFAULT_PASSWORD ??
+      process.env.ADMIN_DEFAULT_PASSWORD ??
+      'changeme123';
+    const passwordHash = await this.hashPassword(defaultPassword);
     return Array.from(map.entries()).map(([email, roles]) => ({
       email,
       name: email.split('@')[0],
       roles: Array.from(roles),
-      active: true
+      active: true,
+      passwordHash
     }));
+  }
+
+  private async defaultSeedEntries() {
+    const defaults = [
+      { email: 'moderator@example.com', password: 'modpass', roles: ['moderator'] },
+      { email: 'analyst@example.com', password: 'analyst', roles: ['analyst'] },
+      { email: 'admin@example.com', password: 'admin', roles: ['admin'] }
+    ];
+    return Promise.all(
+      defaults.map(async entry => ({
+        email: entry.email,
+        name: entry.email.split('@')[0],
+        roles: entry.roles,
+        active: true,
+        passwordHash: await this.hashPassword(entry.password)
+      }))
+    );
   }
 
   private normalizeRoles(roles: string[]) {
@@ -196,4 +261,24 @@ export class StaffService {
     throw new BadRequestException('Unable to process staff member');
   }
 
+  private sanitize<T extends { passwordHash?: string }>(staff: T) {
+    const sanitized = { ...staff };
+    delete (sanitized as { passwordHash?: string }).passwordHash;
+    return sanitized;
+  }
+
+  private async hashPassword(password: string) {
+    const salt = randomBytes(16).toString('hex');
+    const derived = (await scrypt(password, salt, 64)) as Buffer;
+    return `scrypt:${salt}:${derived.toString('hex')}`;
+  }
+
+  private async verifyPassword(password: string, storedHash: string) {
+    const [algo, salt, hash] = storedHash.split(':');
+    if (algo !== 'scrypt' || !salt || !hash) {
+      return false;
+    }
+    const derived = (await scrypt(password, salt, 64)) as Buffer;
+    return derived.toString('hex') === hash;
+  }
 }

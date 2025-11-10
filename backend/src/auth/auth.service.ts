@@ -5,38 +5,35 @@ import {
 import type { Request } from 'express';
 import { JwtService } from '@nestjs/jwt';
 import type { AuthUser } from './interfaces/auth-user.interface';
-
-interface ConfiguredUser {
-  username: string;
-  password: string;
-  roles: string[];
-}
-
-const DEFAULT_USERS: ConfiguredUser[] = [
-  { username: 'moderator', password: 'modpass', roles: ['moderator'] },
-  { username: 'analyst', password: 'analyst', roles: ['analyst'] },
-  { username: 'admin', password: 'admin', roles: ['admin'] }
-];
+import { StaffService } from '../staff/staff.service';
 
 @Injectable()
 export class AuthService {
-  private readonly users: ConfiguredUser[];
-
-  constructor(private readonly jwtService: JwtService) {
-    this.users = this.loadUsersFromEnv();
-  }
+  constructor(
+    private readonly jwtService: JwtService,
+    private readonly staffService: StaffService
+  ) {}
 
   async login(username: string, password: string) {
-    const user = this.users.find(entry => entry.username === username);
-    if (!user || user.password !== password) {
-      throw new UnauthorizedException('Invalid username or password');
-    }
+    const staff = await this.staffService.authenticate(username, password);
     const payload: AuthUser = {
-      username: user.username,
-      roles: user.roles
+      username: staff.email,
+      roles: staff.roles
     };
     const token = await this.jwtService.signAsync(payload);
-    return { token, roles: user.roles };
+    const rawId = (staff as { _id?: unknown })._id;
+    if (rawId) {
+      const id =
+        typeof rawId === 'string'
+          ? rawId
+          : typeof (rawId as { toString?: () => string }).toString === 'function'
+            ? (rawId as { toString: () => string }).toString()
+            : null;
+      if (id) {
+        await this.staffService.recordLogin(id);
+      }
+    }
+    return { token, roles: staff.roles };
   }
 
   extractTokenFromRequest(req: Request): string | null {
@@ -57,28 +54,5 @@ export class AuthService {
     } catch {
       throw new UnauthorizedException('Invalid or expired token');
     }
-  }
-
-  private loadUsersFromEnv(): ConfiguredUser[] {
-    const raw = process.env.AUTH_USERS;
-    if (!raw) {
-      return DEFAULT_USERS;
-    }
-    const entries = raw
-      .split(',')
-      .map(entry => entry.trim())
-      .filter(Boolean)
-      .map(token => {
-        const [username, password, rolesRaw] = token.split(':');
-        const roles =
-          rolesRaw?.split('+').map(role => role.trim()).filter(Boolean) ?? [];
-        if (!username || !password || !roles.length) {
-          return null;
-        }
-        return { username, password, roles };
-      })
-      .filter((entry): entry is ConfiguredUser => Boolean(entry));
-
-    return entries.length ? entries : DEFAULT_USERS;
   }
 }
