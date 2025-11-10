@@ -53,7 +53,7 @@ Each package also declares its own scripts (`frontend/package.json`, `backend/pa
 | Location | File | Variables |
 | --- | --- | --- |
 | Frontend | `frontend/.env` (see `.env.example`) | `NEXT_PUBLIC_API_BASE_URL` – Base URL for API requests, defaults to `http://localhost:3001/api`. |
-| Backend | `backend/.env` (see `.env.example`) | `PORT` – API port (default `3001`); `MONGODB_URI` – MongoDB connection string (default `mongodb://localhost:27017/speed`). |
+| Backend | `backend/.env` (see `.env.example`) | `PORT` – API port (default `3001`); `MONGODB_URI` – MongoDB connection string (default `mongodb://localhost:27017/speed`); `NOTIFY_MODERATORS` / `NOTIFY_ANALYSTS` – optional comma-separated lists used once to seed the Staff directory; `NOTIFICATION_STAFF_CACHE_TTL_MS` – optional cache duration for staff lookups (default `60000`). |
 
 Copy the respective `.env.example` file to `.env` within each workspace and adjust values as needed.
 
