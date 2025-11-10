@@ -17,12 +17,14 @@ import {
   SubmissionStatus,
   AnalysisStatus
 } from './schemas/article-submission.schema';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class SubmissionsService {
   constructor(
     @InjectModel(ArticleSubmission.name)
-    private readonly submissionModel: Model<ArticleSubmissionDocument>
+    private readonly submissionModel: Model<ArticleSubmissionDocument>,
+    private readonly notificationsService: NotificationsService
   ) {}
 
   async create(dto: CreateSubmissionDto) {
@@ -117,18 +119,21 @@ export class SubmissionsService {
         update.decisionNotes = decision.decisionNotes;
       }
       const updated = await this.submissionModel
-        .findByIdAndUpdate(
-          id,
-          update,
-          {
-            new: true
-          }
-        )
+        .findByIdAndUpdate(id, update, {
+          new: true
+        })
         .lean();
 
       if (!updated) {
         throw new NotFoundException('Submission not found');
       }
+
+      void this.notificationsService.notifySubmissionDecision({
+        email: updated.submitterEmail,
+        name: updated.submittedBy,
+        title: updated.title,
+        status: SubmissionStatus.Accepted
+      });
 
       return updated;
     } catch (error) {
@@ -160,16 +165,19 @@ export class SubmissionsService {
         update.decisionNotes = dto.decisionNotes;
       }
       const updated = await this.submissionModel
-        .findByIdAndUpdate(
-          id,
-          update,
-          { new: true }
-        )
+        .findByIdAndUpdate(id, update, { new: true })
         .lean();
 
       if (!updated) {
         throw new NotFoundException('Submission not found');
       }
+
+      void this.notificationsService.notifySubmissionDecision({
+        email: updated.submitterEmail,
+        name: updated.submittedBy,
+        title: updated.title,
+        status: SubmissionStatus.Rejected
+      });
 
       return updated;
     } catch (error) {
@@ -200,6 +208,9 @@ export class SubmissionsService {
         .lean(),
       this.submissionModel.countDocuments(filter)
     ]);
+    if (total > 0) {
+      void this.notificationsService.notifyAnalysts(total);
+    }
     return { items, total, limit: safeLimit, skip: safeSkip };
   }
 

@@ -12,6 +12,7 @@ import { SearchModule } from './search/search.module';
 import { SubmissionsModule } from './submissions/submissions.module';
 import { AdminModule } from './admin/admin.module';
 import { AuthModule } from './auth/auth.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { AuthModule } from './auth/auth.module';
       })
     }),
     AuthModule,
+    NotificationsModule,
     PracticesModule,
     ClaimsModule,
     SubmissionsModule,
