@@ -1,9 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import nodemailer, { type Transporter } from 'nodemailer';
 
 @Injectable()
 export class MailerService {
   private readonly transporter: Transporter;
+  private readonly logger = new Logger(MailerService.name);
 
   constructor() {
     this.transporter = this.createTransport();
@@ -18,10 +19,16 @@ export class MailerService {
     if (!options.to) {
       return;
     }
-    await this.transporter.sendMail({
-      from: this.getFromAddress(),
-      ...options
-    });
+    try {
+      await this.transporter.sendMail({
+        from: this.getFromAddress(),
+        ...options
+      });
+    } catch (error) {
+      this.logger.warn(
+        `Unable to send mail to ${options.to}: ${(error as Error).message}`
+      );
+    }
   }
 
   private createTransport(): Transporter {
