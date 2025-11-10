@@ -219,13 +219,12 @@ export function AdminDashboardClient() {
           </div>
           {staffMessage ? <p className="info-state">{staffMessage}</p> : null}
         </header>
-        <div className="admin-panel-grid">
-          <div className="admin-panel">
-            <div className="table-responsive staff-table">
-              <table className="admin-table">
-                <thead>
-                  <tr>
-                    <th>Email</th>
+        <div className="admin-panel staff-table">
+          <div className="table-responsive">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>Email</th>
                     <th>Roles</th>
                     <th>Active</th>
                     <th>Last Login</th>
@@ -287,85 +286,84 @@ export function AdminDashboardClient() {
                   )}
                 </tbody>
               </table>
-            </div>
           </div>
-
-          <form className="admin-panel form-grid" onSubmit={handleCreateStaff}>
-            <h3>Add Staff Member</h3>
-            <label>
-              Email
-              <input
-                type="email"
-                required
-                value={staffForm.email}
-                onChange={event =>
-                  setStaffForm(current => ({
-                    ...current,
-                    email: event.target.value
-                  }))
-                }
-              />
-            </label>
-            <label>
-              Name
-              <input
-                value={staffForm.name}
-                onChange={event =>
-                  setStaffForm(current => ({
-                    ...current,
-                    name: event.target.value
-                  }))
-                }
-              />
-            </label>
-            <label>
-              Password
-              <input
-                type="password"
-                required
-                minLength={8}
-                value={staffForm.password}
-                onChange={event =>
-                  setStaffForm(current => ({
-                    ...current,
-                    password: event.target.value
-                  }))
-                }
-              />
-            </label>
-            <fieldset>
-              <legend>Roles</legend>
-              <div className="inline-checkboxes">
-                {ROLE_OPTIONS.map(option => (
-                  <label key={option}>
-                    <input
-                      type="checkbox"
-                      checked={staffForm.roles.includes(option)}
-                      onChange={() => handleRoleToggle(option)}
-                    />
-                    {option}
-                  </label>
-                ))}
-              </div>
-            </fieldset>
-            <label className="checkbox-row">
-              <input
-                type="checkbox"
-                checked={staffForm.active}
-                onChange={event =>
-                  setStaffForm(current => ({
-                    ...current,
-                    active: event.target.checked
-                  }))
-                }
-              />
-              Active
-            </label>
-            <button type="submit" disabled={isSavingStaff}>
-              {isSavingStaff ? "Creating..." : "Create Staff"}
-            </button>
-          </form>
         </div>
+
+        <form className="admin-panel form-grid" onSubmit={handleCreateStaff}>
+          <h3>Add Staff Member</h3>
+          <label>
+            Email
+            <input
+              type="email"
+              required
+              value={staffForm.email}
+              onChange={event =>
+                setStaffForm(current => ({
+                  ...current,
+                  email: event.target.value
+                }))
+              }
+            />
+          </label>
+          <label>
+            Name
+            <input
+              value={staffForm.name}
+              onChange={event =>
+                setStaffForm(current => ({
+                  ...current,
+                  name: event.target.value
+                }))
+              }
+            />
+          </label>
+          <label>
+            Password
+            <input
+              type="password"
+              required
+              minLength={8}
+              value={staffForm.password}
+              onChange={event =>
+                setStaffForm(current => ({
+                  ...current,
+                  password: event.target.value
+                }))
+              }
+            />
+          </label>
+          <fieldset>
+            <legend>Roles</legend>
+            <div className="inline-checkboxes">
+              {ROLE_OPTIONS.map(option => (
+                <label key={option}>
+                  <input
+                    type="checkbox"
+                    checked={staffForm.roles.includes(option)}
+                    onChange={() => handleRoleToggle(option)}
+                  />
+                  {option}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+          <label className="checkbox-row">
+            <input
+              type="checkbox"
+              checked={staffForm.active}
+              onChange={event =>
+                setStaffForm(current => ({
+                  ...current,
+                  active: event.target.checked
+                }))
+              }
+            />
+            Active
+          </label>
+          <button type="submit" disabled={isSavingStaff}>
+            {isSavingStaff ? "Creating..." : "Create Staff"}
+          </button>
+        </form>
       </section>
 
       <section className="card admin-section">
