@@ -262,8 +262,9 @@ export class StaffService {
   }
 
   private sanitize<T extends { passwordHash?: string }>(staff: T) {
-    const { passwordHash, ...rest } = staff as T & { passwordHash?: string };
-    return rest;
+    const sanitized = { ...staff };
+    delete (sanitized as { passwordHash?: string }).passwordHash;
+    return sanitized;
   }
 
   private async hashPassword(password: string) {
