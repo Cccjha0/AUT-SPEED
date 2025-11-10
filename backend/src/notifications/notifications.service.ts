@@ -55,4 +55,70 @@ export class NotificationsService {
       )
     );
   }
+
+  async notifyModeratorsNewSubmission(payload: { title: string; submitter?: string }) {
+    const targets = process.env.NOTIFY_MODERATORS?.split(',').map(s => s.trim()).filter(Boolean) ?? [];
+    if (!targets.length) {
+      return;
+    }
+    const text = `New submission "${payload.title}"` + (payload.submitter ? ` from ${payload.submitter}` : '') + ' is waiting for review.';
+    await Promise.all(
+      targets.map(email =>
+        this.mailer.sendMail({
+          to: email,
+          subject: 'New SPEED submission awaiting review',
+          text
+        })
+      )
+    );
+  }
+
+  async notifyAnalystsNewSubmission(payload: { title: string; doi?: string | null }) {
+    const targets = process.env.NOTIFY_ANALYSTS?.split(',').map(s => s.trim()).filter(Boolean) ?? [];
+    if (!targets.length) {
+      return;
+    }
+    const text = `A submission "${payload.title}" has entered the analysis queue${payload.doi ? ` (DOI: ${payload.doi})` : ''}.`;
+    await Promise.all(
+      targets.map(email =>
+        this.mailer.sendMail({
+          to: email,
+          subject: 'New SPEED submission ready for analysis',
+          text
+        })
+      )
+    );
+  }
+
+  async notifyModerationInactivity(queueSize: number) {
+    const targets = process.env.NOTIFY_MODERATORS?.split(',').map(s => s.trim()).filter(Boolean) ?? [];
+    if (!targets.length) {
+      return;
+    }
+    await Promise.all(
+      targets.map(email =>
+        this.mailer.sendMail({
+          to: email,
+          subject: 'Moderation queue inactive for 24h',
+          text: `There are ${queueSize} submissions still queued and no moderation action in the last 24 hours.`
+        })
+      )
+    );
+  }
+
+  async notifyAnalysisInactivity(queueSize: number) {
+    const targets = process.env.NOTIFY_ANALYSTS?.split(',').map(s => s.trim()).filter(Boolean) ?? [];
+    if (!targets.length) {
+      return;
+    }
+    await Promise.all(
+      targets.map(email =>
+        this.mailer.sendMail({
+          to: email,
+          subject: 'Analysis queue inactive for 24h',
+          text: `There are ${queueSize} submissions awaiting analysis and no analysis action in the last 24 hours.`
+        })
+      )
+    );
+  }
 }

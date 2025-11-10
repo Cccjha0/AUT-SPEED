@@ -18,13 +18,15 @@ import {
   AnalysisStatus
 } from './schemas/article-submission.schema';
 import { NotificationsService } from '../notifications/notifications.service';
+import { SystemStateService } from '../system/system-state.service';
 
 @Injectable()
 export class SubmissionsService {
   constructor(
     @InjectModel(ArticleSubmission.name)
     private readonly submissionModel: Model<ArticleSubmissionDocument>,
-    private readonly notificationsService: NotificationsService
+    private readonly notificationsService: NotificationsService,
+    private readonly systemState: SystemStateService
   ) {}
 
   async create(dto: CreateSubmissionDto) {
@@ -43,6 +45,10 @@ export class SubmissionsService {
         })
       );
       const saved = await created.save();
+      await this.notificationsService.notifyModeratorsNewSubmission({
+        title: dto.title,
+        submitter: dto.submittedBy
+      });
       return saved.toObject();
     } catch (error) {
       this.handleMongooseError(error);
@@ -128,11 +134,16 @@ export class SubmissionsService {
         throw new NotFoundException('Submission not found');
       }
 
+      await this.systemState.recordModerationAction();
       void this.notificationsService.notifySubmissionDecision({
         email: updated.submitterEmail,
         name: updated.submittedBy,
         title: updated.title,
         status: SubmissionStatus.Accepted
+      });
+      void this.notificationsService.notifyAnalystsNewSubmission({
+        title: updated.title,
+        doi: updated.doi
       });
 
       return updated;
@@ -172,6 +183,7 @@ export class SubmissionsService {
         throw new NotFoundException('Submission not found');
       }
 
+      await this.systemState.recordModerationAction();
       void this.notificationsService.notifySubmissionDecision({
         email: updated.submitterEmail,
         name: updated.submittedBy,
@@ -211,6 +223,7 @@ export class SubmissionsService {
     if (total > 0) {
       void this.notificationsService.notifyAnalysts(total);
     }
+    await this.maybeSendAnalysisReminder(total);
     return { items, total, limit: safeLimit, skip: safeSkip };
   }
 
@@ -245,6 +258,9 @@ export class SubmissionsService {
     if (!submission) {
       throw new NotFoundException('Submission not found');
     }
+    if (submission) {
+      await this.systemState.recordAnalysisAction();
+    }
     return submission;
   }
 
@@ -261,6 +277,9 @@ export class SubmissionsService {
       .lean();
     if (!submission) {
       throw new NotFoundException('Submission not found');
+    }
+    if (submission) {
+      await this.systemState.recordAnalysisAction();
     }
     return submission;
   }
@@ -349,5 +368,28 @@ export class SubmissionsService {
       'code' in error &&
       (error as { code?: number }).code === 11000
     );
+  }
+
+  private async maybeSendAnalysisReminder(total: number) {
+    if (!total) {
+      return;
+    }
+    const state = await this.systemState.getState();
+    const lastAction = state.analysisLastActionAt
+      ? new Date(state.analysisLastActionAt)
+      : null;
+    const lastReminder = state.analysisReminderSentAt
+      ? new Date(state.analysisReminderSentAt)
+      : null;
+    const threshold = 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    const inactive =
+      !lastAction || now - lastAction.getTime() >= threshold;
+    const alreadyReminded =
+      lastReminder && (!lastAction || lastReminder > lastAction);
+    if (inactive && !alreadyReminded) {
+      await this.notificationsService.notifyAnalysisInactivity(total);
+      await this.systemState.markAnalysisReminderSent();
+    }
   }
 }
