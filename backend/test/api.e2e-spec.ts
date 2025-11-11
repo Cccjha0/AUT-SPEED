@@ -139,6 +139,9 @@ describe('REST API (e2e)', () => {
           authors: ['Author'],
           venue: 'Conf',
           year: invalidYear,
+          volume: '1',
+          number: '1',
+          pages: '1-10',
           doi: '10.1000/invalid-year',
           submittedBy: 'user@example.com',
           submitterEmail: 'user@example.com'
@@ -154,6 +157,9 @@ describe('REST API (e2e)', () => {
           authors: ['Author'],
           venue: 'Conf',
           year: new Date().getFullYear(),
+          volume: '1',
+          number: '1',
+          pages: '1-10',
           doi: '10.1000/queued',
           submittedBy: 'user@example.com',
           submitterEmail: 'user@example.com'
@@ -176,6 +182,9 @@ describe('REST API (e2e)', () => {
           authors: ['Author'],
           venue: 'Conf',
           year: new Date().getFullYear(),
+          volume: '1',
+          number: '1',
+          pages: '1-10',
           doi: '10.1000/reject',
           submittedBy: 'user@example.com',
           submitterEmail: 'user@example.com'
@@ -208,6 +217,9 @@ describe('REST API (e2e)', () => {
           authors: ['Author'],
           venue: 'Venue',
           year: new Date().getFullYear(),
+          volume: '2',
+          number: '1',
+          pages: '11-20',
           doi: '10.1000/unaccepted',
           submittedBy: 'user@example.com',
           submitterEmail: 'user@example.com'
@@ -296,6 +308,9 @@ describe('REST API (e2e)', () => {
           authors: ['Author'],
           venue: 'Journal',
           year: 2020,
+          volume: '3',
+          number: '2',
+          pages: '21-30',
           doi: '10.1000/history',
           submittedBy: 'user@example.com',
           submitterEmail: 'user@example.com'
@@ -427,6 +442,9 @@ describe('REST API (e2e)', () => {
           authors: ['Author'],
           venue: 'Venue',
           year: new Date().getFullYear(),
+          volume: '4',
+          number: '1',
+          pages: '31-40',
           doi: '10.1000/paginate-a',
           submittedBy: 'queue@example.com',
           submitterEmail: 'queue@example.com'
@@ -436,6 +454,9 @@ describe('REST API (e2e)', () => {
           authors: ['Author'],
           venue: 'Venue',
           year: new Date().getFullYear(),
+          volume: '5',
+          number: '1',
+          pages: '41-50',
           doi: '10.1000/paginate-b',
           submittedBy: 'queue@example.com',
           submitterEmail: 'queue@example.com'
@@ -531,6 +552,9 @@ describe('REST API (e2e)', () => {
           authors: ['Author'],
           venue: 'Venue',
           year: new Date().getFullYear(),
+          volume: '6',
+          number: '1',
+          pages: '51-60',
           doi: '10.1000/paginate-evidence-a',
           submittedBy: 'queue@example.com',
           submitterEmail: 'queue@example.com'

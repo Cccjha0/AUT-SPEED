@@ -44,6 +44,12 @@ export class SubmissionsController {
         typeof payload.year === 'number'
           ? payload.year
           : Number(payload.year ?? Number.NaN);
+      const volume =
+        typeof payload.volume === 'string' ? payload.volume.trim() : '';
+      const number =
+        typeof payload.number === 'string' ? payload.number.trim() : '';
+      const pages =
+        typeof payload.pages === 'string' ? payload.pages.trim() : '';
       const doiRaw =
         typeof payload.doi === 'string' ? payload.doi.trim() : '';
       const submittedBy =
@@ -74,6 +80,12 @@ export class SubmissionsController {
         );
       }
 
+      if (!volume || !number || !pages || !doi) {
+        throw new BadRequestException(
+          'Please include volume, issue/number, page range, and DOI for the article.'
+        );
+      }
+
       if (hasForbiddenDoiPrefix) {
         throw new BadRequestException(DOI_ERROR);
       }
@@ -91,6 +103,9 @@ export class SubmissionsController {
         authors,
         venue,
         year,
+        volume,
+        number,
+        pages,
         doi,
         submittedBy,
         submitterEmail
