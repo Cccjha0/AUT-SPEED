@@ -220,9 +220,6 @@ export class SubmissionsService {
         .lean(),
       this.submissionModel.countDocuments(filter)
     ]);
-    if (total > 0) {
-      void this.notificationsService.notifyAnalysts(total);
-    }
     await this.maybeSendAnalysisReminder(total);
     return { items, total, limit: safeLimit, skip: safeSkip };
   }

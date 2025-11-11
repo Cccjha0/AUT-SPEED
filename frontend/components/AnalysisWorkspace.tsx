@@ -36,7 +36,9 @@ const participantOptions: EvidenceParticipantType[] = [
 
 export function AnalysisWorkspace({ initialQueue }: AnalysisWorkspaceProps) {
   const [queue, setQueue] = useState(initialQueue);
-  const [selectedDoi, setSelectedDoi] = useState<string | null>(queue[0]?.doi ?? null);
+  const [selectedDoi, setSelectedDoi] = useState<string | null>(
+    initialQueue.find(item => item.doi)?.doi ?? null
+  );
   const [prefill, setPrefill] = useState<PrefillResponse | null>(null);
   const [prefillError, setPrefillError] = useState<string | null>(null);
   const [isLoadingPrefill, setIsLoadingPrefill] = useState(false);
@@ -57,6 +59,19 @@ export function AnalysisWorkspace({ initialQueue }: AnalysisWorkspaceProps) {
     () => queue.find(item => item.doi === selectedDoi),
     [queue, selectedDoi]
   );
+
+  useEffect(() => {
+    setQueue(initialQueue);
+    setSelectedDoi(prev => {
+      if (!initialQueue.length) {
+        return null;
+      }
+      if (prev && initialQueue.some(item => item.doi === prev)) {
+        return prev;
+      }
+      return initialQueue.find(item => item.doi)?.doi ?? null;
+    });
+  }, [initialQueue]);
 
   useEffect(() => {
     const stored = window.localStorage.getItem('speed-analyst-id');
@@ -187,25 +202,6 @@ export function AnalysisWorkspace({ initialQueue }: AnalysisWorkspaceProps) {
     }
   }
 
-  function refreshQueue() {
-    void (async () => {
-      try {
-        const data = await getJSON<{ items: AnalysisQueueItem[] }>(
-          '/api/analysis/queue?limit=50&status=todo',
-          { cache: 'no-store' }
-        );
-        setQueue(data.items ?? []);
-        if (!data.items?.some(item => item.doi === selectedDoi)) {
-          setSelectedDoi(data.items?.[0]?.doi ?? null);
-        }
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : 'Unable to refresh analysis queue'
-        );
-      }
-    })();
-  }
-
   return (
     <section className="card">
       <div className="inline-buttons" style={{ marginBottom: '1rem' }}>
@@ -216,9 +212,6 @@ export function AnalysisWorkspace({ initialQueue }: AnalysisWorkspaceProps) {
         />
         <button type="button" onClick={handleAssign} className="button-secondary">
           Set / Assign
-        </button>
-        <button type="button" className="button-secondary" onClick={refreshQueue}>
-          Refresh Queue
         </button>
       </div>
       {message ? <div className="success-state">{message}</div> : null}
