@@ -319,12 +319,15 @@ export function ModerationQueue({ items, total, initialError }: ModerationQueueP
   );
 }
 
-function getAuthHeaders() {
+function getAuthHeaders(): Record<string, string> {
   if (typeof window === 'undefined') {
     return {};
   }
   const token = getAuthToken();
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  if (token) {
+    return { Authorization: `Bearer ${token}` };
+  }
+  return {};
 }
 
 function renderHistoryCallout(
