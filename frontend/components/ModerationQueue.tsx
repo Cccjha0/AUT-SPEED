@@ -3,6 +3,7 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { apiUrl } from '../lib/config';
+import { getAuthToken } from '../lib/auth';
 import { getJSON } from '../lib/http';
 import { ErrorMessage } from './ErrorMessage';
 import { LoadingIndicator } from './LoadingIndicator';
@@ -158,7 +159,7 @@ export function ModerationQueue({ items, total, initialError }: ModerationQueueP
           method: 'POST',
           headers: {
             'Content-Type': payload ? 'application/json' : undefined,
-            ...withAuthHeaders()
+            ...getAuthHeaders()
           },
           body: payload ? JSON.stringify(payload) : undefined
         });
@@ -313,6 +314,14 @@ export function ModerationQueue({ items, total, initialError }: ModerationQueueP
       ) : null}
     </section>
   );
+}
+
+function getAuthHeaders() {
+  if (typeof window === 'undefined') {
+    return {};
+  }
+  const token = getAuthToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 function renderHistoryCallout(
