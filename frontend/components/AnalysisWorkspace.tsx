@@ -154,28 +154,39 @@ export function AnalysisWorkspace({ initialQueue }: AnalysisWorkspaceProps) {
     }
   }, [selected]);
 
-  const handleDone = useCallback(async () => {
+  const completeAnalysis = useCallback(async () => {
     const identifier = getActionIdentifier(selected);
     if (!identifier) {
-      setError('Unable to identify the submission. Refresh the queue and try again.');
-      return;
+      throw new Error('Unable to identify the submission. Refresh the queue and try again.');
     }
     const removedId = selected?._id ?? null;
     const nextId = queue.find(item => item._id !== removedId)?._id ?? null;
-    try {
-      await patchJSON(`/api/analysis/${encodeURIComponent(identifier)}/done`, {});
-      setQueue(prev => prev.filter(item => item._id !== removedId));
-      setSelectedId(prev => {
-        if (prev === removedId) {
-          return nextId;
-        }
-        return prev;
-      });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to complete analysis');
-    }
+    await patchJSON(`/api/analysis/${encodeURIComponent(identifier)}/done`, {});
+    setQueue(prev => prev.filter(item => item._id !== removedId));
+    setSelectedId(prev => (prev === removedId ? nextId : prev));
   }, [queue, selected]);
 
+  async function ensureAnalystAssignment() {
+    if (analystId) {
+      return analystId;
+    }
+    const identifier = getActionIdentifier(selected);
+    const trimmedInput = analystInput.trim();
+    if (!identifier || !trimmedInput) {
+      throw new Error('Assign yourself before submitting evidence.');
+    }
+    await patchJSON(`/api/analysis/${encodeURIComponent(identifier)}/assign`, {
+      analystId: trimmedInput
+    });
+    setAnalystId(trimmedInput);
+    window.localStorage.setItem('speed-analyst-id', trimmedInput);
+    setQueue(prev =>
+      prev.map(item =>
+        item._id === selected?._id ? { ...item, assignedAnalyst: trimmedInput } : item
+      )
+    );
+    return trimmedInput;
+  }
   async function handleEvidenceSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selected) {
@@ -185,8 +196,15 @@ export function AnalysisWorkspace({ initialQueue }: AnalysisWorkspaceProps) {
       setError('Add a DOI for this submission before saving evidence.');
       return;
     }
-    if (!analystId) {
-      setError('Assign yourself before submitting evidence.');
+    let currentAnalystId = analystId;
+    try {
+      currentAnalystId = await ensureAnalystAssignment();
+    } catch (assignmentError) {
+      setError(
+        assignmentError instanceof Error
+          ? assignmentError.message
+          : 'Assign yourself before submitting evidence.'
+      );
       return;
     }
     setError(null);
@@ -200,9 +218,9 @@ export function AnalysisWorkspace({ initialQueue }: AnalysisWorkspaceProps) {
         methodType: formState.methodType,
         participantType: formState.participantType,
         notes: formState.notes.trim() || undefined,
-        analyst: analystId
+        analyst: currentAnalystId
       });
-      await handleDone();
+      await completeAnalysis();
       setMessage('Evidence saved and analysis marked done.');
     } catch (err) {
       setError(
@@ -261,14 +279,6 @@ export function AnalysisWorkspace({ initialQueue }: AnalysisWorkspaceProps) {
               <div className="inline-buttons">
                 <button type="button" onClick={handleStart} disabled={!selectedIdentifier}>
                   Start analysis
-                </button>
-                <button
-                  type="button"
-                  className="button-secondary"
-                  onClick={handleDone}
-                  disabled={!selectedIdentifier}
-                >
-                  Mark done
                 </button>
               </div>
               <hr />
