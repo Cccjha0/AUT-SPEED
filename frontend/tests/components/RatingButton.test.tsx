@@ -96,7 +96,9 @@ describe('RatingButton', () => {
     render(<RatingButton doi="10.1000/example" />);
     const button = screen.getByRole('button', { name: /rate/i });
 
-    await user.hover(button);
+    await act(async () => {
+      await user.hover(button);
+    });
     await waitFor(() => expect(getJSONMock).toHaveBeenCalled());
 
     await act(async () => {
