@@ -29,7 +29,7 @@ describe('SubmitForm', () => {
     });
 
     expect(await screen.findByText(/Please provide at least one author/i)).toBeInTheDocument();
-    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1));
     expect(fetchSpy.mock.calls[0]?.[0]).toContain('/api/submissions/check');
   });
 
