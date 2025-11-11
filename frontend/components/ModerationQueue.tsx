@@ -319,6 +319,10 @@ export function ModerationQueue({ items, total, initialError }: ModerationQueueP
                     type="button"
                     onClick={() => handleAction(item._id, 'accept')}
                     disabled={acceptDisabled}
+                    style={{
+                      opacity: acceptDisabled ? 0.5 : 1,
+                      cursor: acceptDisabled ? 'not-allowed' : 'pointer'
+                    }}
                   >
                     Accept
                   </button>
@@ -331,6 +335,14 @@ export function ModerationQueue({ items, total, initialError }: ModerationQueueP
                     Reject
                   </button>
                 </div>
+                {cannotAccept ? (
+                  <p
+                    className="history-callout warning-state"
+                    style={{ marginTop: '0.5rem', fontSize: '0.9rem' }}
+                  >
+                    Accept only peer-reviewed, SE-relevant submissions.
+                  </p>
+                ) : null}
               </article>
             );
           })}
