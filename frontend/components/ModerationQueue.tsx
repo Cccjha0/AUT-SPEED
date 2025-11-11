@@ -3,6 +3,7 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { apiUrl } from '../lib/config';
+import { getAuthToken } from '../lib/auth';
 import { getJSON } from '../lib/http';
 import { ErrorMessage } from './ErrorMessage';
 import { LoadingIndicator } from './LoadingIndicator';
@@ -154,9 +155,15 @@ export function ModerationQueue({ items, total, initialError }: ModerationQueueP
 
     startTransition(async () => {
       try {
+        const headers: Record<string, string> = {
+          ...getAuthHeaders()
+        };
+        if (payload) {
+          headers['Content-Type'] = 'application/json';
+        }
         const response = await fetch(apiUrl(`/api/moderation/${id}/${action}`), {
           method: 'POST',
-          headers: payload ? { 'Content-Type': 'application/json' } : undefined,
+          headers,
           body: payload ? JSON.stringify(payload) : undefined
         });
 
@@ -312,6 +319,17 @@ export function ModerationQueue({ items, total, initialError }: ModerationQueueP
   );
 }
 
+function getAuthHeaders(): Record<string, string> {
+  if (typeof window === 'undefined') {
+    return {};
+  }
+  const token = getAuthToken();
+  if (token) {
+    return { Authorization: `Bearer ${token}` };
+  }
+  return {};
+}
+
 function renderHistoryCallout(
   doi: string | undefined,
   history: Record<string, HistoryEntry>
@@ -349,4 +367,5 @@ function renderHistoryCallout(
     </div>
   );
 }
+
 
