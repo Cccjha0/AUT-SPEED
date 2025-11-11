@@ -158,7 +158,7 @@ export function ModerationQueue({ items, total, initialError }: ModerationQueueP
         const response = await fetch(apiUrl(`/api/moderation/${id}/${action}`), {
           method: 'POST',
           headers: {
-            'Content-Type': payload ? 'application/json' : undefined,
+            ...(payload ? { 'Content-Type': 'application/json' } : {}),
             ...getAuthHeaders()
           },
           body: payload ? JSON.stringify(payload) : undefined
