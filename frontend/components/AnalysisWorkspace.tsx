@@ -34,10 +34,14 @@ const participantOptions: EvidenceParticipantType[] = [
   'unknown'
 ];
 
+function getItemKey(item: AnalysisQueueItem) {
+  return item.doi ?? item._id;
+}
+
 export function AnalysisWorkspace({ initialQueue }: AnalysisWorkspaceProps) {
   const [queue, setQueue] = useState(initialQueue);
-  const [selectedDoi, setSelectedDoi] = useState<string | null>(
-    initialQueue.find(item => item.doi)?.doi ?? null
+  const [selectedKey, setSelectedKey] = useState<string | null>(
+    initialQueue[0] ? getItemKey(initialQueue[0]) : null
   );
   const [prefill, setPrefill] = useState<PrefillResponse | null>(null);
   const [prefillError, setPrefillError] = useState<string | null>(null);
@@ -56,20 +60,20 @@ export function AnalysisWorkspace({ initialQueue }: AnalysisWorkspaceProps) {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const selected = useMemo(
-    () => queue.find(item => item.doi === selectedDoi),
-    [queue, selectedDoi]
+    () => queue.find(item => getItemKey(item) === selectedKey),
+    [queue, selectedKey]
   );
 
   useEffect(() => {
     setQueue(initialQueue);
-    setSelectedDoi(prev => {
+    setSelectedKey(prev => {
       if (!initialQueue.length) {
         return null;
       }
-      if (prev && initialQueue.some(item => item.doi === prev)) {
+      if (prev && initialQueue.some(item => getItemKey(item) === prev)) {
         return prev;
       }
-      return initialQueue.find(item => item.doi)?.doi ?? null;
+      return getItemKey(initialQueue[0]);
     });
   }, [initialQueue]);
 
@@ -160,8 +164,8 @@ export function AnalysisWorkspace({ initialQueue }: AnalysisWorkspaceProps) {
     try {
       await patchJSON(`/api/analysis/${encodeURIComponent(selected.doi)}/done`, {});
       setQueue(prev => prev.filter(item => item.doi !== selected.doi));
-      setSelectedDoi(prev => {
-        if (prev === selected.doi) {
+      setSelectedKey(prev => {
+        if (prev === getItemKey(selected)) {
           return null;
         }
         return prev;
@@ -169,7 +173,7 @@ export function AnalysisWorkspace({ initialQueue }: AnalysisWorkspaceProps) {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to complete analysis');
     }
-  }, [selected?.doi]);
+  }, [selected]);
 
   async function handleEvidenceSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -223,21 +227,24 @@ export function AnalysisWorkspace({ initialQueue }: AnalysisWorkspaceProps) {
             <p className="text-muted">No submissions waiting for analysis.</p>
           ) : (
             <ul className="list">
-              {queue.map(item => (
-                <li key={item._id}>
-                  <button
-                    type="button"
-                    className={item.doi === selectedDoi ? 'active' : ''}
-                    onClick={() => setSelectedDoi(item.doi ?? null)}
-                  >
-                    <strong>{item.title}</strong>
-                    <br />
-                    <small>
-                      {item.doi} · {item.assignedAnalyst ?? 'Unassigned'}
-                    </small>
-                  </button>
-                </li>
-              ))}
+              {queue.map(item => {
+                const key = getItemKey(item);
+                return (
+                  <li key={item._id}>
+                    <button
+                      type="button"
+                      className={key === selectedKey ? 'active' : ''}
+                      onClick={() => setSelectedKey(key)}
+                    >
+                      <strong>{item.title}</strong>
+                      <br />
+                      <small>
+                        {item.doi} · {item.assignedAnalyst ?? 'Unassigned'}
+                      </small>
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </aside>
