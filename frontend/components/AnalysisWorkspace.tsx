@@ -27,22 +27,18 @@ const methodOptions: EvidenceMethodType[] = [
   'meta-analysis',
   'other'
 ];
-const participantOptions: EvidenceParticipantType[] = [
-  'student',
-  'practitioner',
-  'mixed',
-  'unknown'
-];
+const participantOptions: EvidenceParticipantType[] = ['student', 'practitioner', 'mixed', 'unknown'];
 
-function getItemKey(item: AnalysisQueueItem) {
-  return item.doi ?? item._id;
+function getActionIdentifier(item?: AnalysisQueueItem | null) {
+  if (!item) {
+    return null;
+  }
+  return item.doi ?? item._id ?? null;
 }
 
 export function AnalysisWorkspace({ initialQueue }: AnalysisWorkspaceProps) {
   const [queue, setQueue] = useState(initialQueue);
-  const [selectedKey, setSelectedKey] = useState<string | null>(
-    initialQueue[0] ? getItemKey(initialQueue[0]) : null
-  );
+  const [selectedId, setSelectedId] = useState<string | null>(initialQueue[0]?._id ?? null);
   const [prefill, setPrefill] = useState<PrefillResponse | null>(null);
   const [prefillError, setPrefillError] = useState<string | null>(null);
   const [isLoadingPrefill, setIsLoadingPrefill] = useState(false);
@@ -60,20 +56,22 @@ export function AnalysisWorkspace({ initialQueue }: AnalysisWorkspaceProps) {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const selected = useMemo(
-    () => queue.find(item => getItemKey(item) === selectedKey),
-    [queue, selectedKey]
+    () => queue.find(item => item._id === selectedId),
+    [queue, selectedId]
   );
+  const selectedIdentifier = getActionIdentifier(selected);
+  const canSaveEvidence = Boolean(selected?.doi);
 
   useEffect(() => {
     setQueue(initialQueue);
-    setSelectedKey(prev => {
+    setSelectedId(prev => {
       if (!initialQueue.length) {
         return null;
       }
-      if (prev && initialQueue.some(item => getItemKey(item) === prev)) {
+      if (prev && initialQueue.some(item => item._id === prev)) {
         return prev;
       }
-      return getItemKey(initialQueue[0]);
+      return initialQueue[0]?._id ?? null;
     });
   }, [initialQueue]);
 
@@ -111,14 +109,15 @@ export function AnalysisWorkspace({ initialQueue }: AnalysisWorkspaceProps) {
   }
 
   const handleAssign = useCallback(async () => {
-    if (!selected?.doi || !analystInput.trim()) {
+    const identifier = getActionIdentifier(selected);
+    if (!identifier || !analystInput.trim()) {
       setError('Enter your analyst identifier before assigning.');
       return;
     }
     setError(null);
     setMessage(null);
     try {
-      await patchJSON(`/api/analysis/${encodeURIComponent(selected.doi)}/assign`, {
+      await patchJSON(`/api/analysis/${encodeURIComponent(identifier)}/assign`, {
         analystId: analystInput.trim()
       });
       setAnalystId(analystInput.trim());
@@ -126,58 +125,64 @@ export function AnalysisWorkspace({ initialQueue }: AnalysisWorkspaceProps) {
       setMessage('Submission assigned.');
       setQueue(prev =>
         prev.map(item =>
-          item.doi === selected.doi
-            ? { ...item, assignedAnalyst: analystInput.trim() }
-            : item
+          item._id === selected?._id ? { ...item, assignedAnalyst: analystInput.trim() } : item
         )
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to assign submission');
     }
-  }, [analystInput, selected?.doi]);
+  }, [analystInput, selected]);
 
   const handleStart = useCallback(async () => {
-    if (!selected?.doi) {
+    const identifier = getActionIdentifier(selected);
+    if (!identifier) {
+      setError('Unable to identify the submission. Refresh the queue and try again.');
       return;
     }
     setError(null);
     setMessage(null);
     try {
-      await patchJSON(`/api/analysis/${encodeURIComponent(selected.doi)}/start`, {});
+      await patchJSON(`/api/analysis/${encodeURIComponent(identifier)}/start`, {});
       setMessage('Analysis started.');
       setQueue(prev =>
         prev.map(item =>
-          item.doi === selected.doi
-            ? { ...item, analysisStatus: 'in_progress' }
-            : item
+          item._id === selected?._id ? { ...item, analysisStatus: 'in_progress' } : item
         )
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to start analysis');
     }
-  }, [selected?.doi]);
+  }, [selected]);
 
   const handleDone = useCallback(async () => {
-    if (!selected?.doi) {
+    const identifier = getActionIdentifier(selected);
+    if (!identifier) {
+      setError('Unable to identify the submission. Refresh the queue and try again.');
       return;
     }
+    const removedId = selected?._id ?? null;
+    const nextId = queue.find(item => item._id !== removedId)?._id ?? null;
     try {
-      await patchJSON(`/api/analysis/${encodeURIComponent(selected.doi)}/done`, {});
-      setQueue(prev => prev.filter(item => item.doi !== selected.doi));
-      setSelectedKey(prev => {
-        if (prev === getItemKey(selected)) {
-          return null;
+      await patchJSON(`/api/analysis/${encodeURIComponent(identifier)}/done`, {});
+      setQueue(prev => prev.filter(item => item._id !== removedId));
+      setSelectedId(prev => {
+        if (prev === removedId) {
+          return nextId;
         }
         return prev;
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to complete analysis');
     }
-  }, [selected]);
+  }, [queue, selected]);
 
   async function handleEvidenceSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!selected?.doi) {
+    if (!selected) {
+      return;
+    }
+    if (!selected.doi) {
+      setError('Add a DOI for this submission before saving evidence.');
       return;
     }
     if (!analystId) {
@@ -227,24 +232,21 @@ export function AnalysisWorkspace({ initialQueue }: AnalysisWorkspaceProps) {
             <p className="text-muted">No submissions waiting for analysis.</p>
           ) : (
             <ul className="list">
-              {queue.map(item => {
-                const key = getItemKey(item);
-                return (
-                  <li key={item._id}>
-                    <button
-                      type="button"
-                      className={key === selectedKey ? 'active' : ''}
-                      onClick={() => setSelectedKey(key)}
-                    >
-                      <strong>{item.title}</strong>
-                      <br />
-                      <small>
-                        {item.doi} · {item.assignedAnalyst ?? 'Unassigned'}
-                      </small>
-                    </button>
-                  </li>
-                );
-              })}
+              {queue.map(item => (
+                <li key={item._id}>
+                  <button
+                    type="button"
+                    className={item._id === selectedId ? 'active' : ''}
+                    onClick={() => setSelectedId(item._id)}
+                  >
+                    <strong>{item.title}</strong>
+                    <br />
+                    <small>
+                      {item.doi} · {item.assignedAnalyst ?? 'Unassigned'}
+                    </small>
+                  </button>
+                </li>
+              ))}
             </ul>
           )}
         </aside>
@@ -257,14 +259,14 @@ export function AnalysisWorkspace({ initialQueue }: AnalysisWorkspaceProps) {
               </p>
               <p className="text-muted">DOI: {selected.doi}</p>
               <div className="inline-buttons">
-                <button type="button" onClick={handleStart} disabled={!selected.doi}>
+                <button type="button" onClick={handleStart} disabled={!selectedIdentifier}>
                   Start analysis
                 </button>
                 <button
                   type="button"
                   className="button-secondary"
                   onClick={handleDone}
-                  disabled={!selected.doi}
+                  disabled={!selectedIdentifier}
                 >
                   Mark done
                 </button>
@@ -375,7 +377,7 @@ export function AnalysisWorkspace({ initialQueue }: AnalysisWorkspaceProps) {
                     rows={4}
                   />
                 </label>
-                <button type="submit" disabled={!selected.doi}>
+                <button type="submit" disabled={!canSaveEvidence}>
                   Save evidence
                 </button>
               </form>

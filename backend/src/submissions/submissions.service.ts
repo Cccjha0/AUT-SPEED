@@ -224,10 +224,11 @@ export class SubmissionsService {
     return { items, total, limit: safeLimit, skip: safeSkip };
   }
 
-  async assignAnalysis(doi: string, analystId: string) {
+  async assignAnalysis(identifier: string, analystId: string) {
+    const filter = this.buildAnalysisLookup(identifier);
     const submission = await this.submissionModel
       .findOneAndUpdate(
-        { doi: doi.toLowerCase() },
+        filter,
         {
           assignedAnalyst: analystId.trim(),
           analysisStatus: AnalysisStatus.Todo
@@ -241,10 +242,11 @@ export class SubmissionsService {
     return submission;
   }
 
-  async startAnalysis(doi: string) {
+  async startAnalysis(identifier: string) {
+    const filter = this.buildAnalysisLookup(identifier);
     const submission = await this.submissionModel
       .findOneAndUpdate(
-        { doi: doi.toLowerCase() },
+        filter,
         {
           analysisStatus: AnalysisStatus.InProgress,
           analysisStartedAt: new Date()
@@ -261,10 +263,11 @@ export class SubmissionsService {
     return submission;
   }
 
-  async completeAnalysis(doi: string) {
+  async completeAnalysis(identifier: string) {
+    const filter = this.buildAnalysisLookup(identifier);
     const submission = await this.submissionModel
       .findOneAndUpdate(
-        { doi: doi.toLowerCase() },
+        filter,
         {
           analysisStatus: AnalysisStatus.Done,
           analysisCompletedAt: new Date()
@@ -388,5 +391,16 @@ export class SubmissionsService {
       await this.notificationsService.notifyAnalysisInactivity(total);
       await this.systemState.markAnalysisReminderSent();
     }
+  }
+
+  private buildAnalysisLookup(identifier: string) {
+    const trimmed = identifier?.trim();
+    if (!trimmed) {
+      throw new BadRequestException('Submission identifier is required');
+    }
+    if (Types.ObjectId.isValid(trimmed)) {
+      return { _id: new Types.ObjectId(trimmed) };
+    }
+    return { doi: trimmed.toLowerCase() };
   }
 }
