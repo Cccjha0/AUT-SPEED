@@ -46,10 +46,13 @@ const SubmissionSchema = z.object({
     .int()
     .min(1900, 'Year must be 1900 or later.')
     .max(new Date().getFullYear() + 1, 'Year is out of range.'),
-  volume: z.string().min(1).optional(),
-  number: z.string().min(1).optional(),
-  pages: z.string().min(1).optional(),
-  doi: z.string().optional()
+  volume: z.string().min(1, 'Volume is required.'),
+  number: z.string().min(1, 'Issue/Number is required.'),
+  pages: z.string().min(1, 'Pages are required.'),
+  doi: z
+    .string()
+    .min(1, 'DOI is required.')
+    .regex(/^10\.\S+$/i, 'DOI must be the identifier only (e.g. 10.1000/xyz123) without links.')
 });
 
 const FORBIDDEN_LINK_PATTERN = /(https?:\/\/|www\.)/i;
@@ -269,10 +272,10 @@ export function SubmitForm() {
       authors,
       venue: form.venue.trim(),
       year: Number.parseInt(form.year, 10),
-      volume: form.volume.trim() || undefined,
-      number: form.number.trim() || undefined,
-      pages: form.pages.trim() || undefined,
-      doi: form.doi.trim() || undefined
+      volume: form.volume.trim(),
+      number: form.number.trim(),
+      pages: form.pages.trim(),
+      doi: form.doi.trim()
     };
 
     const validation = SubmissionSchema.safeParse(payload);
@@ -446,36 +449,40 @@ export function SubmitForm() {
         />
       </label>
       <label>
-        Volume (optional)
+        Volume
         <input
           name="volume"
           value={form.volume}
           onChange={event => update('volume', event.target.value)}
+          required
         />
       </label>
       <label>
-        Issue/Number (optional)
+        Issue/Number
         <input
           name="number"
           value={form.number}
           onChange={event => update('number', event.target.value)}
+          required
         />
       </label>
       <label>
-        Pages (optional)
+        Pages
         <input
           name="pages"
           value={form.pages}
           onChange={event => update('pages', event.target.value)}
+          required
         />
       </label>
       <label>
-        DOI (optional)
+        DOI
         <input
           name="doi"
           value={form.doi}
           onChange={event => update('doi', event.target.value)}
           onBlur={handleDoiBlur}
+          required
         />
       </label>
       {doiChecking ? <p className="text-muted">Checking DOI...</p> : null}

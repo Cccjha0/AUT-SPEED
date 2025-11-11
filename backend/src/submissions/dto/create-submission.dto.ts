@@ -4,7 +4,6 @@ import {
   IsEmail,
   IsInt,
   IsNotEmpty,
-  IsOptional,
   IsString,
   Matches,
   Max,
@@ -34,28 +33,28 @@ export class CreateSubmissionDto {
   @Max(CURRENT_YEAR_LIMIT)
   year!: number;
 
-  @IsOptional()
   @IsString()
+  @IsNotEmpty()
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
-  volume?: string;
+  volume!: string;
 
-  @IsOptional()
   @IsString()
+  @IsNotEmpty()
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
-  number?: string;
+  number!: string;
 
-  @IsOptional()
   @IsString()
+  @IsNotEmpty()
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
-  pages?: string;
+  pages!: string;
 
-  @IsOptional()
   @IsString()
-  @Transform(({ value }) => (typeof value === 'string' ? value.trim() || undefined : value))
+  @IsNotEmpty()
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @Matches(DOI_REGEX, {
     message: 'DOI must be the identifier only (e.g. 10.1000/xyz123) without links.'
   })
-  doi?: string;
+  doi!: string;
 
   @IsString()
   @IsNotEmpty()

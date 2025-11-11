@@ -72,6 +72,9 @@ export async function createTestApp(): Promise<TestApp> {
       authors: ['Seed Author'],
       venue: 'Seed Venue',
       year: new Date().getFullYear(),
+      volume: '1',
+      number: '1',
+      pages: '1-10',
       doi,
       submittedBy: 'Seed Seeder',
       submitterEmail: 'seed@example.com'

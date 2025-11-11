@@ -21,11 +21,16 @@ describe('SubmitForm', () => {
       await user.type(screen.getByLabelText(/Title/i), 'Test Article');
       await user.type(screen.getByLabelText(/Venue/i), 'Conference');
       await user.type(screen.getByLabelText(/Year/i), `${new Date().getFullYear()}`);
+      await user.type(screen.getByLabelText(/Volume/i), '1');
+      await user.type(screen.getByLabelText(/Issue\/Number/i), '1');
+      await user.type(screen.getByLabelText(/Pages/i), '1-10');
+      await user.type(screen.getByLabelText(/DOI/i), '10.1000/test-authors');
       await user.click(screen.getByRole('button', { name: /submit/i }));
     });
 
     expect(await screen.findByText(/Please provide at least one author/i)).toBeInTheDocument();
-    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(fetchSpy.mock.calls[0]?.[0]).toContain('/api/submissions/check');
   });
 
   it('submits successfully and resets the form fields', async () => {
@@ -125,6 +130,9 @@ describe('SubmitForm', () => {
       await user.type(screen.getByLabelText(/Authors/i), 'Alice');
       await user.type(screen.getByLabelText(/Venue/i), 'Journal');
       await user.type(screen.getByLabelText(/Year/i), `${new Date().getFullYear()}`);
+      await user.type(screen.getByLabelText(/Volume/i), '1');
+      await user.type(screen.getByLabelText(/Issue\/Number/i), '1');
+      await user.type(screen.getByLabelText(/Pages/i), '1-10');
       await user.type(screen.getByLabelText(/DOI/i), 'https://doi.org/10.1000/test');
       await user.click(screen.getByRole('button', { name: /submit/i }));
     });
