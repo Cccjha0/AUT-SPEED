@@ -84,6 +84,7 @@ export function AnalysisWorkspace({ initialQueue }: AnalysisWorkspaceProps) {
   }, []);
 
   useEffect(() => {
+    setPrefillError(null);
     if (selected?.doi) {
       void loadPrefill(selected.doi);
     } else {
