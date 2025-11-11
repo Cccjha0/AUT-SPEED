@@ -140,8 +140,11 @@ export class EvidenceService {
   }
 
   async prefillByDoi(doi: string) {
+    const trimmed = doi.trim();
     const submission = await this.submissionModel
-      .findOne({ doi: doi.trim().toLowerCase() })
+      .findOne({
+        doi: buildCaseInsensitivePattern(trimmed)
+      })
       .lean();
     if (!submission) {
       throw new NotFoundException('Submission not found');
@@ -198,4 +201,13 @@ export class EvidenceService {
       throw new BadRequestException('Invalid evidence id');
     }
   }
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function buildCaseInsensitivePattern(value: string) {
+  const escaped = escapeRegExp(value);
+  return { $regex: new RegExp(`^${escaped}$`, 'i') };
 }
