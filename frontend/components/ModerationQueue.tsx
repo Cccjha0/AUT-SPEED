@@ -155,12 +155,15 @@ export function ModerationQueue({ items, total, initialError }: ModerationQueueP
 
     startTransition(async () => {
       try {
+        const headers: Record<string, string> = {
+          ...getAuthHeaders()
+        };
+        if (payload) {
+          headers['Content-Type'] = 'application/json';
+        }
         const response = await fetch(apiUrl(`/api/moderation/${id}/${action}`), {
           method: 'POST',
-          headers: {
-            ...(payload ? { 'Content-Type': 'application/json' } : {}),
-            ...getAuthHeaders()
-          },
+          headers,
           body: payload ? JSON.stringify(payload) : undefined
         });
 
