@@ -40,7 +40,6 @@ export function AnalysisWorkspace({ initialQueue }: AnalysisWorkspaceProps) {
   const [queue, setQueue] = useState(initialQueue);
   const [selectedId, setSelectedId] = useState<string | null>(initialQueue[0]?._id ?? null);
   const [prefill, setPrefill] = useState<PrefillResponse | null>(null);
-  const [prefillError, setPrefillError] = useState<string | null>(null);
   const [isLoadingPrefill, setIsLoadingPrefill] = useState(false);
   const [analystId, setAnalystId] = useState('');
   const [analystInput, setAnalystInput] = useState('');
@@ -84,26 +83,21 @@ export function AnalysisWorkspace({ initialQueue }: AnalysisWorkspaceProps) {
   }, []);
 
   useEffect(() => {
-    setPrefillError(null);
+    setPrefill(null);
     if (selected?.doi) {
       void loadPrefill(selected.doi);
-    } else {
-      setPrefill(null);
     }
   }, [selected?.doi]);
 
   async function loadPrefill(doi: string) {
     setIsLoadingPrefill(true);
-    setPrefillError(null);
     try {
       const data = await getJSON<PrefillResponse>(
         `/api/evidence/prefill?doi=${encodeURIComponent(doi)}`
       );
       setPrefill(data);
     } catch (err) {
-      setPrefillError(
-        err instanceof Error ? err.message : 'Unable to load article metadata'
-      );
+      console.debug('Prefill metadata failed', err);
     } finally {
       setIsLoadingPrefill(false);
     }
@@ -285,8 +279,6 @@ export function AnalysisWorkspace({ initialQueue }: AnalysisWorkspaceProps) {
               <hr />
               {isLoadingPrefill ? (
                 <p className="text-muted">Loading metadata...</p>
-              ) : prefillError ? (
-                <p className="error-state">{prefillError}</p>
               ) : (
                 <div className="prefill">
                   <h3>Metadata</h3>
