@@ -120,6 +120,8 @@ export function ModerationQueue({ items, total, initialError }: ModerationQueueP
     }
 
     const decision = decisions[id] ?? {};
+    const peerReviewedDecision = decision.peerReviewed;
+    const seRelatedDecision = decision.seRelated;
     let payload: Record<string, unknown> | undefined;
     if (action === 'reject') {
       const reason = window.prompt('Provide a rejection reason');
@@ -132,12 +134,18 @@ export function ModerationQueue({ items, total, initialError }: ModerationQueueP
         seRelated: decision.seRelated,
         decisionNotes: decision.decisionNotes
       };
-    } else if (
-      action === 'accept' &&
-      (typeof decision.peerReviewed !== 'boolean' || typeof decision.seRelated !== 'boolean')
-    ) {
-      setError('Mark peer-review status and SE relevance before accepting.');
-      return;
+    } else if (action === 'accept') {
+      if (peerReviewedDecision === false || seRelatedDecision === false) {
+        setError('Accept only submissions that are peer-reviewed and relevant to SE practice.');
+        return;
+      }
+      if (
+        typeof peerReviewedDecision !== 'boolean' ||
+        typeof seRelatedDecision !== 'boolean'
+      ) {
+        setError('Mark peer-review status and SE relevance before accepting.');
+        return;
+      }
     } else if (
       decision.peerReviewed !== undefined ||
       decision.seRelated !== undefined ||
@@ -205,114 +213,127 @@ export function ModerationQueue({ items, total, initialError }: ModerationQueueP
 
       {hasItems ? (
         <div className="queue-grid">
-          {queue.map(item => (
-            <article key={item._id} className="queue-item card">
-              <h2>{item.title}</h2>
-              <p className="text-muted">
-                {item.venue ? `${item.venue} - ` : ''}
-                {item.year ?? 'Year N/A'}
-              </p>
-              {item.authors?.length ? <p>Authors: {item.authors.join(', ')}</p> : null}
-              {item.doi ? (
+          {queue.map(item => {
+            const itemDecision = decisions[item._id] ?? {};
+            const hasPeerReviewDecision = typeof itemDecision.peerReviewed === 'boolean';
+            const hasSeRelatedDecision = typeof itemDecision.seRelated === 'boolean';
+            const cannotAccept =
+              itemDecision.peerReviewed === false || itemDecision.seRelated === false;
+            const acceptDisabled =
+              isPending || !hasPeerReviewDecision || !hasSeRelatedDecision || cannotAccept;
+            return (
+              <article key={item._id} className="queue-item card">
+                <h2>{item.title}</h2>
                 <p className="text-muted">
-                  DOI: <span>{item.doi}</span>
+                  {item.venue ? `${item.venue} - ` : ''}
+                  {item.year ?? 'Year N/A'}
                 </p>
-              ) : null}
-              <p className="text-muted">
-                Submitted by: {item.submittedBy ?? 'Unknown'}
-                {item.submitterEmail ? ` (${item.submitterEmail})` : ''}
-              </p>
-              {renderHistoryCallout(item.doi, history)}
-              <div className="form-grid">
-                <fieldset className="field-group">
-                  <legend>
-                    Peer-reviewed venue?
-                    {typeof decisions[item._id]?.peerReviewed !== 'boolean' ? (
-                      <span className="text-muted" style={{ marginLeft: '0.5rem', fontSize: '0.85rem' }}>
-                        Select Yes or No
-                      </span>
-                    ) : null}
-                  </legend>
-                  <div className="inline-radio">
-                    <label className="label-inline">
-                      <input
-                        type="radio"
-                        name={`peer-reviewed-${item._id}`}
-                        checked={decisions[item._id]?.peerReviewed === true}
-                        onChange={() => ensureDecisionValue(item._id, 'peerReviewed', true)}
-                      />
-                      Yes
-                    </label>
-                    <label className="label-inline">
-                      <input
-                        type="radio"
-                        name={`peer-reviewed-${item._id}`}
-                        checked={decisions[item._id]?.peerReviewed === false}
-                        onChange={() => ensureDecisionValue(item._id, 'peerReviewed', false)}
-                      />
-                      No
-                    </label>
-                  </div>
-                </fieldset>
-                <fieldset className="field-group">
-                  <legend>
-                    Relevant to SE practice?
-                    {typeof decisions[item._id]?.seRelated !== 'boolean' ? (
-                      <span className="text-muted" style={{ marginLeft: '0.5rem', fontSize: '0.85rem' }}>
-                        Select Yes or No
-                      </span>
-                    ) : null}
-                  </legend>
-                  <div className="inline-radio">
-                    <label className="label-inline">
-                      <input
-                        type="radio"
-                        name={`se-related-${item._id}`}
-                        checked={decisions[item._id]?.seRelated === true}
-                        onChange={() => ensureDecisionValue(item._id, 'seRelated', true)}
-                      />
-                      Yes
-                    </label>
-                    <label className="label-inline">
-                      <input
-                        type="radio"
-                        name={`se-related-${item._id}`}
-                        checked={decisions[item._id]?.seRelated === false}
-                        onChange={() => ensureDecisionValue(item._id, 'seRelated', false)}
-                      />
-                      No
-                    </label>
-                  </div>
-                </fieldset>
-                <label>
-                  Decision notes
-                  <textarea
-                    value={decisions[item._id]?.decisionNotes ?? ''}
-                    onChange={event =>
-                      setDecisions(prev => ({
-                        ...prev,
-                        [item._id]: { ...prev[item._id], decisionNotes: event.target.value }
-                      }))
-                    }
-                    rows={3}
-                  />
-                </label>
-              </div>
-              <div className="inline-buttons">
-                <button type="button" onClick={() => handleAction(item._id, 'accept')} disabled={isPending}>
-                  Accept
-                </button>
-                <button
-                  type="button"
-                  className="button-secondary"
-                  onClick={() => handleAction(item._id, 'reject')}
-                  disabled={isPending}
-                >
-                  Reject
-                </button>
-              </div>
-            </article>
-          ))}
+                {item.authors?.length ? <p>Authors: {item.authors.join(', ')}</p> : null}
+                {item.doi ? (
+                  <p className="text-muted">
+                    DOI: <span>{item.doi}</span>
+                  </p>
+                ) : null}
+                <p className="text-muted">
+                  Submitted by: {item.submittedBy ?? 'Unknown'}
+                  {item.submitterEmail ? ` (${item.submitterEmail})` : ''}
+                </p>
+                {renderHistoryCallout(item.doi, history)}
+                <div className="form-grid">
+                  <fieldset className="field-group">
+                    <legend>
+                      Peer-reviewed venue?
+                      {typeof decisions[item._id]?.peerReviewed !== 'boolean' ? (
+                        <span className="text-muted" style={{ marginLeft: '0.5rem', fontSize: '0.85rem' }}>
+                          Select Yes or No
+                        </span>
+                      ) : null}
+                    </legend>
+                    <div className="inline-radio">
+                      <label className="label-inline">
+                        <input
+                          type="radio"
+                          name={`peer-reviewed-${item._id}`}
+                          checked={decisions[item._id]?.peerReviewed === true}
+                          onChange={() => ensureDecisionValue(item._id, 'peerReviewed', true)}
+                        />
+                        Yes
+                      </label>
+                      <label className="label-inline">
+                        <input
+                          type="radio"
+                          name={`peer-reviewed-${item._id}`}
+                          checked={decisions[item._id]?.peerReviewed === false}
+                          onChange={() => ensureDecisionValue(item._id, 'peerReviewed', false)}
+                        />
+                        No
+                      </label>
+                    </div>
+                  </fieldset>
+                  <fieldset className="field-group">
+                    <legend>
+                      Relevant to SE practice?
+                      {typeof decisions[item._id]?.seRelated !== 'boolean' ? (
+                        <span className="text-muted" style={{ marginLeft: '0.5rem', fontSize: '0.85rem' }}>
+                          Select Yes or No
+                        </span>
+                      ) : null}
+                    </legend>
+                    <div className="inline-radio">
+                      <label className="label-inline">
+                        <input
+                          type="radio"
+                          name={`se-related-${item._id}`}
+                          checked={decisions[item._id]?.seRelated === true}
+                          onChange={() => ensureDecisionValue(item._id, 'seRelated', true)}
+                        />
+                        Yes
+                      </label>
+                      <label className="label-inline">
+                        <input
+                          type="radio"
+                          name={`se-related-${item._id}`}
+                          checked={decisions[item._id]?.seRelated === false}
+                          onChange={() => ensureDecisionValue(item._id, 'seRelated', false)}
+                        />
+                        No
+                      </label>
+                    </div>
+                  </fieldset>
+                  <label>
+                    Decision notes
+                    <textarea
+                      value={decisions[item._id]?.decisionNotes ?? ''}
+                      onChange={event =>
+                        setDecisions(prev => ({
+                          ...prev,
+                          [item._id]: { ...prev[item._id], decisionNotes: event.target.value }
+                        }))
+                      }
+                      rows={3}
+                    />
+                  </label>
+                </div>
+                <div className="inline-buttons">
+                  <button
+                    type="button"
+                    onClick={() => handleAction(item._id, 'accept')}
+                    disabled={acceptDisabled}
+                  >
+                    Accept
+                  </button>
+                  <button
+                    type="button"
+                    className="button-secondary"
+                    onClick={() => handleAction(item._id, 'reject')}
+                    disabled={isPending}
+                  >
+                    Reject
+                  </button>
+                </div>
+              </article>
+            );
+          })}
         </div>
       ) : null}
     </section>
