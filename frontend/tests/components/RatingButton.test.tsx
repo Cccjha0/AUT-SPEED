@@ -99,8 +99,10 @@ describe('RatingButton', () => {
     await user.hover(button);
     await waitFor(() => expect(getJSONMock).toHaveBeenCalled());
 
-    await user.click(button);
+    await act(async () => {
+      await user.click(button);
+    });
 
-    expect(await screen.findByText(/Unable to submit rating/i)).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText(/Unable to submit rating/i)).toBeInTheDocument());
   });
 });
