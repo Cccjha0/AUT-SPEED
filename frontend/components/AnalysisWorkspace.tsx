@@ -157,9 +157,13 @@ export function AnalysisWorkspace({ initialQueue }: AnalysisWorkspaceProps) {
       await completeAnalysis();
       setMessage('Evidence saved and analysis marked done.');
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Unable to submit evidence'
-      );
+      const message =
+        err instanceof Error
+          ? err.message
+          : typeof err === 'object' && err !== null && 'message' in err
+            ? (err as { message?: string }).message ?? 'Unable to submit evidence'
+            : 'Unable to submit evidence';
+      setError(message);
     }
   }
 
