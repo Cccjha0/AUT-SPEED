@@ -31,7 +31,7 @@ export default function LoginPage() {
       if (!token) {
         throw new Error("Authentication failed");
       }
-      storeAuthSession(token, roles);
+      storeAuthSession(token, roles, username);
       const next = searchParams?.get("next") ?? "/moderation";
       router.replace(next);
     } catch (err) {

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { getJSON, patchJSON, postJSON } from '../lib/http';
+import { getStoredUserEmail } from '../lib/auth';
 import type { AnalysisQueueItem, EvidenceResult, EvidenceMethodType, EvidenceParticipantType } from '../lib/types';
 import { ErrorMessage } from './ErrorMessage';
 
@@ -41,7 +42,7 @@ export function AnalysisWorkspace({ initialQueue }: AnalysisWorkspaceProps) {
   const [selectedId, setSelectedId] = useState<string | null>(initialQueue[0]?._id ?? null);
   const [prefill, setPrefill] = useState<PrefillResponse | null>(null);
   const [isLoadingPrefill, setIsLoadingPrefill] = useState(false);
-  const [analystId, setAnalystId] = useState('');
+  const [analystId, setAnalystId] = useState(() => getStoredUserEmail() ?? '');
   const [formState, setFormState] = useState({
     practiceKey: '',
     claimKey: '',
