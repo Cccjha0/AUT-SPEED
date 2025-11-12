@@ -59,7 +59,9 @@ export function AnalysisWorkspace({ initialQueue }: AnalysisWorkspaceProps) {
     [queue, selectedId]
   );
   const selectedIdentifier = getActionIdentifier(selected);
-  const canSaveEvidence = Boolean(selected?.doi);
+  const practiceKeyFilled = Boolean(formState.practiceKey.trim());
+  const claimKeyFilled = Boolean(formState.claimKey.trim());
+  const canSaveEvidence = Boolean(selected?.doi && practiceKeyFilled && claimKeyFilled);
 
   useEffect(() => {
     setQueue(initialQueue);
@@ -141,9 +143,19 @@ export function AnalysisWorkspace({ initialQueue }: AnalysisWorkspaceProps) {
       setError('Analyst identity missing; please re-login.');
       return;
     }
+    if (!practiceKeyFilled || !claimKeyFilled) {
+      setError('Provide a practice key and claim key before saving evidence.');
+      return;
+    }
     setError(null);
     setMessage(null);
     try {
+      console.debug('Selected entry', selected);
+      console.debug('Submitting evidence', {
+        articleDoi: selected.doi,
+        practiceKey: formState.practiceKey.trim(),
+        claimKey: formState.claimKey.trim()
+      });
       await postJSON('/api/evidence', {
         articleDoi: selected.doi,
         practiceKey: formState.practiceKey.trim(),
