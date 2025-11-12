@@ -42,7 +42,7 @@ export function AnalysisWorkspace({ initialQueue }: AnalysisWorkspaceProps) {
   const [selectedId, setSelectedId] = useState<string | null>(initialQueue[0]?._id ?? null);
   const [prefill, setPrefill] = useState<PrefillResponse | null>(null);
   const [isLoadingPrefill, setIsLoadingPrefill] = useState(false);
-  const [analystId, setAnalystId] = useState(() => getStoredUserEmail() ?? '');
+  const analystId = getStoredUserEmail() ?? '';
   const [formState, setFormState] = useState({
     practiceKey: '',
     claimKey: '',
@@ -73,13 +73,6 @@ export function AnalysisWorkspace({ initialQueue }: AnalysisWorkspaceProps) {
       return initialQueue[0]?._id ?? null;
     });
   }, [initialQueue]);
-
-  useEffect(() => {
-    const stored = window.localStorage.getItem('speed-analyst-id');
-    if (stored) {
-      setAnalystId(stored);
-    }
-  }, []);
 
   useEffect(() => {
     setPrefill(null);
