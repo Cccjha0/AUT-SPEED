@@ -26,8 +26,9 @@ describe("ModerationQueue accept guard", () => {
   it("disables Accept when either radio is No", async () => {
     render(<ModerationQueue items={[makeItem()]} total={1} />);
 
-    const noOption = screen.getAllByLabelText(/peer-reviewed/i)[1];
-    await user.click(noOption);
+    // Pick the second radio in the first fieldset (Peer-reviewed -> No)
+    const radioInputs = screen.getAllByRole("radio");
+    await user.click(radioInputs[1]);
 
     const acceptButton = screen.getByRole("button", { name: /accept/i });
     expect(acceptButton).toBeDisabled();
