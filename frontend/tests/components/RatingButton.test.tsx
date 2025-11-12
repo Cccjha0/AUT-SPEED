@@ -55,7 +55,9 @@ describe('RatingButton', () => {
 
     render(<RatingButton doi="10.1000/example" />);
 
-    await user.click(screen.getByRole('button', { name: /rate/i }));
+    await act(async () => {
+      await user.click(screen.getByRole('button', { name: /rate/i }));
+    });
 
     const realtimeCallCountAfterClick = getJSONMock.mock.calls.length;
 
