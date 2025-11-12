@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ModerationQueue } from "../../components/ModerationQueue";
 import type { SubmissionItem } from "../../components/ModerationQueue";
@@ -26,7 +26,8 @@ describe("ModerationQueue accept guard", () => {
   it("disables Accept when either radio is No", async () => {
     render(<ModerationQueue items={[makeItem()]} total={1} />);
 
-    // Pick the second radio in the first fieldset (Peer-reviewed -> No)
+    await waitFor(() => expect(screen.getByText(/Select Yes or No/i)).toBeInTheDocument());
+
     const radioInputs = screen.getAllByRole("radio");
     await user.click(radioInputs[1]);
 
