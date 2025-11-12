@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { getJSON, patchJSON, postJSON } from '../lib/http';
+import { getStoredUserEmail } from '../lib/auth';
 import type { AnalysisQueueItem, EvidenceResult, EvidenceMethodType, EvidenceParticipantType } from '../lib/types';
 import { ErrorMessage } from './ErrorMessage';
 
@@ -41,8 +42,7 @@ export function AnalysisWorkspace({ initialQueue }: AnalysisWorkspaceProps) {
   const [selectedId, setSelectedId] = useState<string | null>(initialQueue[0]?._id ?? null);
   const [prefill, setPrefill] = useState<PrefillResponse | null>(null);
   const [isLoadingPrefill, setIsLoadingPrefill] = useState(false);
-  const [analystId, setAnalystId] = useState('');
-  const [analystInput, setAnalystInput] = useState('');
+  const analystId = getStoredUserEmail() ?? '';
   const [formState, setFormState] = useState({
     practiceKey: '',
     claimKey: '',
@@ -59,7 +59,9 @@ export function AnalysisWorkspace({ initialQueue }: AnalysisWorkspaceProps) {
     [queue, selectedId]
   );
   const selectedIdentifier = getActionIdentifier(selected);
-  const canSaveEvidence = Boolean(selected?.doi);
+  const practiceKeyFilled = Boolean(formState.practiceKey.trim());
+  const claimKeyFilled = Boolean(formState.claimKey.trim());
+  const canSaveEvidence = Boolean(selected?.doi && practiceKeyFilled && claimKeyFilled);
 
   useEffect(() => {
     setQueue(initialQueue);
@@ -73,14 +75,6 @@ export function AnalysisWorkspace({ initialQueue }: AnalysisWorkspaceProps) {
       return initialQueue[0]?._id ?? null;
     });
   }, [initialQueue]);
-
-  useEffect(() => {
-    const stored = window.localStorage.getItem('speed-analyst-id');
-    if (stored) {
-      setAnalystId(stored);
-      setAnalystInput(stored);
-    }
-  }, []);
 
   useEffect(() => {
     setPrefill(null);
@@ -102,31 +96,6 @@ export function AnalysisWorkspace({ initialQueue }: AnalysisWorkspaceProps) {
       setIsLoadingPrefill(false);
     }
   }
-
-  const handleAssign = useCallback(async () => {
-    const identifier = getActionIdentifier(selected);
-    if (!identifier || !analystInput.trim()) {
-      setError('Enter your analyst identifier before assigning.');
-      return;
-    }
-    setError(null);
-    setMessage(null);
-    try {
-      await patchJSON(`/api/analysis/${encodeURIComponent(identifier)}/assign`, {
-        analystId: analystInput.trim()
-      });
-      setAnalystId(analystInput.trim());
-      window.localStorage.setItem('speed-analyst-id', analystInput.trim());
-      setMessage('Submission assigned.');
-      setQueue(prev =>
-        prev.map(item =>
-          item._id === selected?._id ? { ...item, assignedAnalyst: analystInput.trim() } : item
-        )
-      );
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to assign submission');
-    }
-  }, [analystInput, selected]);
 
   const handleStart = useCallback(async () => {
     const identifier = getActionIdentifier(selected);
@@ -161,27 +130,6 @@ export function AnalysisWorkspace({ initialQueue }: AnalysisWorkspaceProps) {
     setSelectedId(prev => (prev === removedId ? nextId : prev));
   }, [queue, selected]);
 
-  async function ensureAnalystAssignment() {
-    if (analystId) {
-      return analystId;
-    }
-    const identifier = getActionIdentifier(selected);
-    const trimmedInput = analystInput.trim();
-    if (!identifier || !trimmedInput) {
-      throw new Error('Assign yourself before submitting evidence.');
-    }
-    await patchJSON(`/api/analysis/${encodeURIComponent(identifier)}/assign`, {
-      analystId: trimmedInput
-    });
-    setAnalystId(trimmedInput);
-    window.localStorage.setItem('speed-analyst-id', trimmedInput);
-    setQueue(prev =>
-      prev.map(item =>
-        item._id === selected?._id ? { ...item, assignedAnalyst: trimmedInput } : item
-      )
-    );
-    return trimmedInput;
-  }
   async function handleEvidenceSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selected) {
@@ -191,20 +139,23 @@ export function AnalysisWorkspace({ initialQueue }: AnalysisWorkspaceProps) {
       setError('Add a DOI for this submission before saving evidence.');
       return;
     }
-    let currentAnalystId = analystId;
-    try {
-      currentAnalystId = await ensureAnalystAssignment();
-    } catch (assignmentError) {
-      setError(
-        assignmentError instanceof Error
-          ? assignmentError.message
-          : 'Assign yourself before submitting evidence.'
-      );
+    if (!analystId) {
+      setError('Analyst identity missing; please re-login.');
+      return;
+    }
+    if (!practiceKeyFilled || !claimKeyFilled) {
+      setError('Provide a practice key and claim key before saving evidence.');
       return;
     }
     setError(null);
     setMessage(null);
     try {
+      console.debug('Selected entry', selected);
+      console.debug('Submitting evidence', {
+        articleDoi: selected.doi,
+        practiceKey: formState.practiceKey.trim(),
+        claimKey: formState.claimKey.trim()
+      });
       await postJSON('/api/evidence', {
         articleDoi: selected.doi,
         practiceKey: formState.practiceKey.trim(),
@@ -213,28 +164,25 @@ export function AnalysisWorkspace({ initialQueue }: AnalysisWorkspaceProps) {
         methodType: formState.methodType,
         participantType: formState.participantType,
         notes: formState.notes.trim() || undefined,
-        analyst: currentAnalystId
+        analyst: analystId
       });
       await completeAnalysis();
       setMessage('Evidence saved and analysis marked done.');
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Unable to submit evidence'
-      );
+      const message =
+        err instanceof Error
+          ? err.message
+          : typeof err === 'object' && err !== null && 'message' in err
+            ? (err as { message?: string }).message ?? 'Unable to submit evidence'
+            : 'Unable to submit evidence';
+      setError(message);
     }
   }
 
   return (
     <section className="card">
       <div className="inline-buttons" style={{ marginBottom: '1rem' }}>
-        <input
-          placeholder="Your analyst ID"
-          value={analystInput}
-          onChange={event => setAnalystInput(event.target.value)}
-        />
-        <button type="button" onClick={handleAssign} className="button-secondary">
-          Set / Assign
-        </button>
+        <span>Analyst: {analystId || 'Unknown'}</span>
       </div>
       {message ? <div className="success-state">{message}</div> : null}
       {error ? <ErrorMessage message={error} /> : null}
@@ -263,7 +211,7 @@ export function AnalysisWorkspace({ initialQueue }: AnalysisWorkspaceProps) {
             </ul>
           )}
         </aside>
-        <div>
+        <div className="analysis-main">
           {selected ? (
             <div>
               <h2>{selected.title}</h2>

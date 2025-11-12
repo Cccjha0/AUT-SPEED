@@ -293,6 +293,11 @@ select {
   overflow-y: auto;
 }
 
+.analysis-grid .analysis-main {
+  flex: 1;
+  min-width: 320px;
+}
+
 .analysis-grid .list {
   list-style: none;
   padding: 0;

@@ -24,13 +24,13 @@ async function sendJSON<T>(
   const authInit = withAuth(init);
   const headers = normalizeHeaders(authInit.headers);
   const resp = await fetch(apiUrl(path), {
+    ...authInit,
     method,
     headers: {
       'Content-Type': 'application/json',
       ...headers
     },
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-    ...authInit
+    body: body !== undefined ? JSON.stringify(body) : undefined
   });
 
   if (!resp.ok) {
