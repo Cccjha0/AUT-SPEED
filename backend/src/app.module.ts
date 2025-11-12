@@ -41,7 +41,7 @@ import { StaffModule } from './staff/staff.module';
     RatingsModule,
     ModerationModule,
     SearchModule,
-    ...(process.env.NODE_ENV !== 'production' ? [AdminModule] : [])
+    AdminModule
   ],
   controllers: [AppController],
   providers: [AppService]
