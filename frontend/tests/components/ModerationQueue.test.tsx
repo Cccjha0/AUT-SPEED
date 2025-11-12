@@ -1,37 +1,35 @@
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { ModerationQueue, type SubmissionItem } from '../../components/ModerationQueue';
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { ModerationQueue } from "../../components/ModerationQueue";
+import type { SubmissionItem } from "../../components/ModerationQueue";
 
-vi.mock('../../lib/http', () => ({ getJSON: vi.fn().mockResolvedValue({ exists: false }) }));
+vi.mock("../../lib/http", () => ({
+  getJSON: vi.fn().mockResolvedValue({ exists: false })
+}));
+
+const user = userEvent.setup();
 
 function makeItem(overrides: Partial<SubmissionItem> = {}): SubmissionItem {
   return {
-    _id: '1',
-    title: 'Test Paper',
-    authors: ['Alice'],
-    venue: 'Conf',
+    _id: "1",
+    title: "Test Paper",
+    status: "queued",
+    authors: ["Alice"],
+    venue: "Conf",
     year: 2024,
-    doi: '10.1000/test',
-    status: 'queued',
+    doi: "10.1000/test",
     ...overrides
   };
 }
 
-describe('ModerationQueue accept guard', () => {
-  const user = userEvent.setup();
-
-  it('disables Accept when either radio is No', async () => {
+describe("ModerationQueue accept guard", () => {
+  it("disables Accept when either radio is No", async () => {
     render(<ModerationQueue items={[makeItem()]} total={1} />);
 
-    // Peer-reviewed: No
-    const peerNo = await screen.findByRole('radio', { name: /peer-reviewed/i, checked: false });
-    // The labels are separate; select via name attribute targeting constructed id could be complicated.
-    // Instead simulate by clicking the second radio inputs found under the first fieldset.
-    const radios = screen.getAllByRole('radio');
-    // radios[1] should correspond to first fieldset "No"
-    await user.click(radios[1]);
+    const noOption = screen.getAllByLabelText(/peer-reviewed/i)[1];
+    await user.click(noOption);
 
-    const accept = screen.getByRole('button', { name: /accept/i });
-    expect(accept).toBeDisabled();
+    const acceptButton = screen.getByRole("button", { name: /accept/i });
+    expect(acceptButton).toBeDisabled();
   });
 });
