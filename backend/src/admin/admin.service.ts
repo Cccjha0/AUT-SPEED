@@ -43,8 +43,8 @@ export class AdminService {
   ) {}
 
   ensureNotProduction() {
-    const allowInProd = process.env.ADMIN_SEED_ALLOWED === 'true';
-    if (process.env.NODE_ENV === 'production' && !allowInProd) {
+    const disableInProd = process.env.ADMIN_SEED_DISABLED === 'true';
+    if (process.env.NODE_ENV === 'production' && disableInProd) {
       throw new NotFoundException('Admin endpoints disabled in production');
     }
   }
