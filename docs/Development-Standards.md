@@ -52,3 +52,13 @@ A change is complete when:
 ## Demo Data Seeding
 Use the Admin seed endpoints (`/api/admin/seed/*`) to load or refresh demo data in all environments by default. The routes are idempotent. To disable in production, set `ADMIN_SEED_DISABLED=true`. Refer to `docs/api.md#admin-development-only` for payload/response details.
 
+## Test Suite Overview
+- Frontend unit tests: 
+pm run test --workspace frontend (Vitest + React Testing Library). Covers components like RatingButton, SubmitForm, Moderation guard, etc.
+- Backend unit/integration tests: 
+pm run test --workspace backend (Jest). Exercises controllers/services including submissions, evidence, search, admin seed, and ratings.
+- Full workspace lint: 
+pm run lint --workspaces ensures both packages pass ESLint.
+- Full workspace build: 
+pm run build --workspaces runs Next.js build + backend TypeScript compile.
+- CI pipeline runs lint + build for both workspaces on every push/PR.
