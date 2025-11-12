@@ -13,9 +13,9 @@ All endpoints are served under the `/api` prefix. Requests and responses use JSO
 
 Standard HTTP error codes:
 
-- `400 Bad Request` â€“ Validation failure, missing required fields, duplicate constraint violations.
-- `404 Not Found` â€“ Requested resource does not exist.
-- `500 Internal Server Error` â€“ Unexpected server fault.
+- `400 Bad Request` â€?Validation failure, missing required fields, duplicate constraint violations.
+- `404 Not Found` â€?Requested resource does not exist.
+- `500 Internal Server Error` â€?Unexpected server fault.
 
 ---
 
@@ -138,7 +138,7 @@ Standard HTTP error codes:
   "venue": "ICSE",
   "year": 2024,
   "doi": "10.1000/example",
-  "submittedBy": "alice@example.com"
+  "volume": "10",\n  "number": "2",\n  "pages": "101-110",\n  "doi": "10.1000/example",\n  "submittedBy": "Alice Example",\n  "submitterEmail": "alice@example.com"
 }
 ```
 
@@ -235,7 +235,7 @@ Standard HTTP error codes:
 
 | Method | Path             | Description                                     |
 | ------ | ---------------- | ----------------------------------------------- |
-| POST   | `/ratings`       | Submit rating for an article (1â€“5 stars).       |
+| POST   | `/ratings`       | Submit rating for an article (1â€? stars).       |
 | GET    | `/ratings/avg`   | Retrieve average rating for `doi`.              |
 
 **Submit Request**
@@ -309,7 +309,7 @@ Standard HTTP error codes:
 }
 ```
 
-On first boot the backend seeds this collection either from `NOTIFY_MODERATORS` / `NOTIFY_ANALYSTS` (if present) or with a default trio (`admin@example.com`, `moderator@example.com`, `analyst@example.com`) so you can log in immediately. Update the accounts â€” including their passwords â€” via these endpoints. All queue notifications and authentication now resolve recipients from this collection, with a short-lived cache inside the notifications service.
+On first boot the backend seeds this collection either from `NOTIFY_MODERATORS` / `NOTIFY_ANALYSTS` (if present) or with a default trio (`admin@example.com`, `moderator@example.com`, `analyst@example.com`) so you can log in immediately. Update the accounts â€?including their passwords â€?via these endpoints. All queue notifications and authentication now resolve recipients from this collection, with a short-lived cache inside the notifications service.
 
 ---
 
@@ -383,9 +383,9 @@ Read-only endpoints that aggregate data for UI consumption.
 
 ---
 
-## Admin (Development Only)
+## Admin Seeding
 
-> **Note:** These routes are only enabled when `NODE_ENV !== 'production'`. In production they return `404`.
+> **Availability:** Routes are enabled by default in all environments. To disable them in production, set `ADMIN_SEED_DISABLED=true`.
 
 Admin endpoints load predefined demo data and are idempotent (repeated calls simply increase the `skipped` count).
 
@@ -418,3 +418,4 @@ Admin endpoints load predefined demo data and are idempotent (repeated calls sim
 ```
 
 Subsequent calls return the same shape but with `inserted: 0` and `skipped` reflecting the number of already-present records.
+

@@ -49,5 +49,6 @@ A change is complete when:
 - Frontend: `npm run lint --workspace frontend`, `npm run test --workspace frontend`
 - Full workspace build/lint: `npm run lint --workspaces`, `npm run build --workspaces`
 
-## Demo Data Seeding (Development Only)
-Use the Admin seed endpoints (`/api/admin/seed/*`) to load or refresh demo data in non-production environments. The routes are idempotent and disabled entirely when `NODE_ENV === 'production'`. Refer to `docs/api.md#admin-development-only` for payload/response details.
+## Demo Data Seeding
+Use the Admin seed endpoints (`/api/admin/seed/*`) to load or refresh demo data in all environments by default. The routes are idempotent. To disable in production, set `ADMIN_SEED_DISABLED=true`. Refer to `docs/api.md#admin-development-only` for payload/response details.
+
